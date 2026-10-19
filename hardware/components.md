@@ -10,13 +10,10 @@ This document provides a detailed list of all electrical, mechanical, and electr
 |------|-----------|---------------|----------|---------|
 | 1 | Microcontroller | Arduino Uno R3 / Mega 2560 | 1 | Master controller running motion & FSM logic |
 | 2 | Servo Driver Board | PCA9685 16-Channel 12-Bit PWM (I2C) | 1 | Generates accurate hardware PWM pulses for all servos |
-| 3 | Base Servo | MG996R Metal Gear (11 kg-cm torque) | 1 | Azimuth / Base rotation (Waist joint) |
-| 4 | Shoulder Servo | MG996R Metal Gear (11 kg-cm torque) | 1 or 2 | Primary arm elevation joint |
-| 5 | Elbow Servo | MG996R Metal Gear (11 kg-cm torque) | 1 | Forearm pitch joint |
-| 6 | Wrist Pitch Servo | SG90 / MG90S Micro Servo | 1 | Wrist orientation up/down |
-| 7 | End Effector Servo | SG90 / MG90S Micro Servo | 1 | Gripper opening and closing mechanism |
-| 8 | Ultrasonic Sensor | HC-SR04 | 1 | Non-contact distance measurement for pick zone |
-| 9 | Color Sensor | TCS3200 / TCS230 | 1 | RGB color detection module |
+| 3 | Joint Servos | MG995 / MG996R Metal Gear (10-11 kg-cm torque) | 4-6 | High-torque joint actuators (Base, Shoulder, Elbow, Wrist) |
+| 4 | Micro Servos | SG90 / MG90S Micro Servo (optional for gripper/wrist) | 1-2 | Gripper opening/closing mechanism |
+| 5 | Ultrasonic Sensor | HC-SR04 | 1 | Non-contact distance measurement for pick zone |
+| 6 | Color Sensor | TCS3200 / TCS230 | 1 | RGB color detection module |
 
 ---
 
@@ -24,9 +21,10 @@ This document provides a detailed list of all electrical, mechanical, and electr
 
 | Item | Component | Specification | Quantity | Notes |
 |------|-----------|---------------|----------|-------|
-| 1 | Servo DC Power Supply | 5V / 6V DC, 10A regulated | 1 | Dedicated power for PCA9685 V+ power terminal |
-| 2 | Logic Power Supply | 5V USB (from PC or 9V DC adapter) | 1 | Arduino logic rail |
-| 3 | Electrolytic Capacitor | 1000uF - 2200uF, 16V | 1 | Buffers servo transient current spikes on V+ rail |
+| 1 | Main Battery | 7.4V 2500mAh 2S Li-ion / LiPo | 1 | Primary mobile power source |
+| 2 | Voltage Regulator | Step-Down Buck Converter (DC-DC) | 1 | Regulates 7.4V down to 5V/6V for PCA9685 V+ rail |
+| 3 | Logic Power | Arduino USB / 5V rail | 1 | Power for Arduino & sensors |
+| 4 | Electrolytic Capacitor | 1000uF - 2200uF, 16V | 1 | Buffers servo transient current spikes on V+ rail |
 
 ---
 

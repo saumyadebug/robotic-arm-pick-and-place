@@ -27,6 +27,7 @@ Proper power distribution is the single most critical factor for reliable roboti
 3. **Capacitor Decoupling**:
    Install a large capacitor (1000 µF to 2200 µF, 16V electrolytic) across the V+ and GND terminals of the PCA9685 board to buffer voltage dips during sudden acceleration.
 
-4. **Voltage Selection**:
-   - **5V Regulated**: Safe for all standard servos.
-   - **6V Regulated**: Recommended for MG996R servos for increased torque and speed (ensure SG90 micro servos support up to 6V or use a step-down buck converter for micro servos).
+4. **Battery & Buck Converter Setup**:
+   - **7.4V 2500mAh 2S Battery**: Provides sufficient discharge capacity for servo transient loads.
+   - **DC-DC Step-Down Buck Converter**: Essential to step down 7.4V to 5V–6V regulated output for the PCA9685 V+ rail. Do not feed 7.4V directly to standard 5V-6V rated servos as it will burn their internal control circuits.
+   - **Common Ground**: Ensure the Buck Converter negative output is tied to Arduino GND.
