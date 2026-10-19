@@ -1,0 +1,35 @@
+# Arduino & Embedded compilation artifacts
+*.hex
+*.elf
+*.bin
+*.o
+*.d
+*.eep
+*.lss
+*.sym
+*.map
+build/
+output/
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.pio/
+.clangd/
+
+# OS specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local logs and temporary files
+*.log
+scratch/
+tmp/
