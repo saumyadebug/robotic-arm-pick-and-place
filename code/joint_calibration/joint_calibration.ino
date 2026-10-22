@@ -40,7 +40,7 @@ void loop() {
       Serial.print(F(" -> Pulse: "));
       Serial.println(pulse);
 
-      pwm.setPWM(channel, 0, pulse);
+      pwm.setPWM(channel, 1, pulse);
     } else {
       Serial.println(F("Invalid input! Ensure channel 0-15 and pulse 100-650."));
     }

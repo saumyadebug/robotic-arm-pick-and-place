@@ -35,8 +35,8 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 // Per-joint safe pulse limits (from calibration)
 #define BASE_MIN      150
 #define BASE_MAX      600
-#define SHOULDER_MIN  180
-#define SHOULDER_MAX  580
+#define SHOULDER_MIN  200
+#define SHOULDER_MAX  340
 #define ELBOW_MIN     160
 #define ELBOW_MAX     590
 #define WRIST_MIN     150
@@ -134,7 +134,7 @@ void setup() {
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(50);
 
-  setJoints(375, 300, 350, 300, GRIPPER_OPEN);
+  setJoints(375, 260, 350, 300, GRIPPER_OPEN);
   Serial.println(F("System Ready. Waiting for objects..."));
 }
 
@@ -175,9 +175,9 @@ void loop() {
 
     case STATE_PICK: {
       Serial.println(F("Executing Pick..."));
-      setJoints(300, 420, 280, 250, GRIPPER_OPEN);
+      setJoints(300, 320, 280, 250, GRIPPER_OPEN);
       delay(1000);
-      setJoints(300, 420, 280, 250, GRIPPER_GRIP);
+      setJoints(300, 320, 280, 250, GRIPPER_GRIP);
       delay(800);
       setJoints(300, 320, 350, 300, GRIPPER_GRIP);
       delay(800);
@@ -194,9 +194,9 @@ void loop() {
 
       setJoints(targetBase, 320, 350, 300, GRIPPER_GRIP);
       delay(1000);
-      setJoints(targetBase, 420, 280, 250, GRIPPER_GRIP);
+      setJoints(targetBase, 320, 280, 250, GRIPPER_GRIP);
       delay(800);
-      setJoints(targetBase, 420, 280, 250, GRIPPER_OPEN);
+      setJoints(targetBase, 320, 280, 250, GRIPPER_OPEN);
       delay(800);
       currentState = STATE_RETURN_HOME;
       break;
@@ -204,7 +204,7 @@ void loop() {
 
     case STATE_RETURN_HOME: {
       Serial.println(F("Returning to Home Position..."));
-      setJoints(375, 300, 350, 300, GRIPPER_OPEN);
+      setJoints(375, 260, 350, 300, GRIPPER_OPEN);
       delay(1500);
       currentState = STATE_IDLE;
       break;

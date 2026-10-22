@@ -15,7 +15,7 @@ calibrated with `joint_calibration` before use.
 | Joint | Channel | Servo | Safe Min (tick) | Safe Max (tick) | Neutral (tick) | Notes |
 |---|---|---|---|---|---|---|
 | Base (waist) | 0 | MG995 | 200 | 500 | 375 | Keep sweep ≤ ±60° from center to avoid cable twist |
-| Shoulder | 1 | MG995 | 230 | 470 | 300 | Heavy arm: avoid full horizontal extension under load |
+| Shoulder | 1 | MG995 | 200 | 340 | 260 | Calibrated: min 200, max 340, center 260 (vertical) |
 | Elbow | 2 | MG995 | 220 | 480 | 350 | Avoid fully straight (over-center) positions |
 | Wrist pitch | 3 | MG90S/SG90 | 180 | 520 | 300 | Keep gripper level during transport |
 | Gripper | 4 | SG90 | 220 (open) | 420 (grip) | — | Add 10–20 tick margin; do not stall |

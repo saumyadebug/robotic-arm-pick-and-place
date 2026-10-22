@@ -23,8 +23,8 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 // Per-joint safe pulse limits (calibrate and update these)
 #define BASE_MIN      150
 #define BASE_MAX      600
-#define SHOULDER_MIN  180
-#define SHOULDER_MAX  580
+#define SHOULDER_MIN  200
+#define SHOULDER_MAX  340
 #define ELBOW_MIN     160
 #define ELBOW_MAX     590
 #define WRIST_MIN     150
@@ -67,13 +67,13 @@ void setup() {
   pwm.setPWMFreq(50);
 
   Serial.println(F("Robotic Arm Initializing to Home Position..."));
-  moveArmSafe(375, 300, 350, 300, GRIPPER_OPEN);
+  moveArmSafe(375, 260, 350, 300, GRIPPER_OPEN);
   delay(2000);
 }
 
 void loop() {
   Serial.println(F("1. Approaching Pick Location..."));
-  moveArmSafe(250, 420, 280, 250, GRIPPER_OPEN);
+  moveArmSafe(250, 320, 280, 250, GRIPPER_OPEN);
   delay(1000);
 
   Serial.println(F("2. Closing Gripper (Grasping Object)..."));
@@ -89,7 +89,7 @@ void loop() {
   delay(1000);
 
   Serial.println(F("5. Lowering to Drop Box..."));
-  moveArmSafe(500, 420, 280, 250, GRIPPER_CLOSED);
+  moveArmSafe(500, 320, 280, 250, GRIPPER_CLOSED);
   delay(800);
 
   Serial.println(F("6. Opening Gripper (Release)..."));
@@ -97,6 +97,6 @@ void loop() {
   delay(800);
 
   Serial.println(F("7. Returning to Standby Position..."));
-  moveArmSafe(375, 300, 350, 300, GRIPPER_OPEN);
+  moveArmSafe(375, 260, 350, 300, GRIPPER_OPEN);
   delay(3000);
 }
