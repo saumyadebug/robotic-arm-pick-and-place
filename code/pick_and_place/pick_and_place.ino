@@ -1,17 +1,20 @@
 /*
- * Basic Pick and Place Sequence
- * Robotic Arm Pick and Place System
+ * Basic Pick and Place Sequence  -  MINIMAL SAFE MODE (heavy metal arm)
  *
- * Channel mapping (calibrated):
- *   CH_BASE      0   range 200-500, center 375
- *   CH_SHOULDER  1   range 200-340, center 260 (vertical)
- *   CH_ELBOW     2   range 200-420, center 300 (vertical)
- *   CH_WRIST     6   held at 375 (neutral)
- *   CH_GRIPPER   7   open 120, closed 200
+ * Channel map:
+ *   CH_BASE      0   clamped 340-410  (center 375)  +/- 35 ticks max
+ *   CH_SHOULDER  1   clamped 250-275  (center 260)  +/- 15 ticks max
+ *   CH_ELBOW     2   clamped 290-310  (center 300)  +/- 10 ticks max
+ *   CH_WRIST     6   fixed 375 (never moves)
+ *   CH_GRIPPER   7   open 120 / closed 200
  *
- * Safety: the arm is folded UPRIGHT (compact) before every base rotation
- * so the center of mass stays over the base - prevents tipping.
- * Joints move sequentially (20 ms apart) to limit peak current.
+ * Design rules for stability:
+ *  1. Every joint is HARD-CLAMPED to a very small band -> the arm cannot
+ *     swing far even if a pose value is wrong.
+ *  2. The base NEVER rotates while the arm leans: it returns to the
+ *     upright pose (shoulder 260 / elbow 300) first, then rotates.
+ *  3. Only ONE joint moves at a time, with a pause between each.
+ *  4. Slow speeds: 40 ms between joints, 700-1000 ms settle times.
  */
 
 #include <Wire.h>
@@ -25,62 +28,62 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 #define CH_WRIST      6
 #define CH_GRIPPER    7
 
-#define BASE_MIN      200
-#define BASE_MAX      500
-#define SHOULDER_MIN  200
-#define SHOULDER_MAX  340
-#define ELBOW_MIN     200
-#define ELBOW_MAX     420
-#define WRIST_MIN     300
-#define WRIST_MAX     450
+// --- HARD SAFE CLAMPS (small on purpose) ---
+#define BASE_MIN      340
+#define BASE_MAX      410
+#define SHOULDER_MIN  250
+#define SHOULDER_MAX  275
+#define ELBOW_MIN     290
+#define ELBOW_MAX     310
+#define WRIST_MIN     370
+#define WRIST_MAX     380
 
 #define GRIPPER_OPEN   120
 #define GRIPPER_CLOSED 200
 
-// --- Poses (ticks) ---
-// Compact upright pose: arm folded straight up -> balanced over base
-#define P_HOME_BASE      375
-#define P_HOME_SHOULDER  260
-#define P_HOME_ELBOW     300
-#define P_HOME_WRIST     375
+// --- Poses ---
+#define HOME_BASE     375
+#define HOME_SHOULDER 260
+#define HOME_ELBOW    300
+#define HOME_WRIST    375
 
-// Reach pose: lean forward and lower forearm to the object (small, controlled)
-#define P_REACH_BASE     300
-#define P_REACH_SHOULDER 310
-#define P_REACH_ELBOW    250
+// Slight forward lean / slight forearm drop to reach the object
+#define REACH_SHOULDER 252   // only 8 ticks from home
+#define REACH_ELBOW    292   // only 8 ticks from home
 
-// Bin angles (base only; arm stays compact while rotating)
-#define BIN_RED          250
-#define BIN_GREEN        375
-#define BIN_BLUE         475
+// Bins: tiny base offsets from center (arm stays upright)
+#define BIN_RED       345
+#define BIN_GREEN     375
+#define BIN_BLUE      405
 
-int clampPulse(uint8_t channel, int pulse) {
-  if (channel == CH_BASE)     return constrain(pulse, BASE_MIN, BASE_MAX);
-  if (channel == CH_SHOULDER) return constrain(pulse, SHOULDER_MIN, SHOULDER_MAX);
-  if (channel == CH_ELBOW)    return constrain(pulse, ELBOW_MIN, ELBOW_MAX);
-  if (channel == CH_WRIST)    return constrain(pulse, WRIST_MIN, WRIST_MAX);
-  return pulse;
+int clampPulse(uint8_t ch, int p) {
+  if (ch == CH_BASE)     return constrain(p, BASE_MIN, BASE_MAX);
+  if (ch == CH_SHOULDER) return constrain(p, SHOULDER_MIN, SHOULDER_MAX);
+  if (ch == CH_ELBOW)    return constrain(p, ELBOW_MIN, ELBOW_MAX);
+  if (ch == CH_WRIST)    return constrain(p, WRIST_MIN, WRIST_MAX);
+  return p;
 }
 
-void setJointPulse(uint8_t channel, int pulse) {
-  pwm.setPWM(channel, 0, clampPulse(channel, pulse));
+// Move ONE joint at a time, base FIRST (so mass settles before leaning)
+void moveArmSafe(int b, int s, int e, int w, int g) {
+  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, b));        delay(40);
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, s)); delay(40);
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, e));       delay(40);
+  pwm.setPWM(CH_WRIST, 0, clampPulse(CH_WRIST, w));       delay(40);
+  pwm.setPWM(CH_GRIPPER, 0, g);                           delay(700);
 }
 
-// Sequential joint motion: base -> shoulder -> elbow -> wrist -> gripper
-void moveArmSafe(int b, int s, int e, int w, int g, int stepDelay = 25) {
-  setJointPulse(CH_BASE, b);     delay(stepDelay);
-  setJointPulse(CH_SHOULDER, s); delay(stepDelay);
-  setJointPulse(CH_ELBOW, e);    delay(stepDelay);
-  setJointPulse(CH_WRIST, w);    delay(stepDelay);
-  setJointPulse(CH_GRIPPER, g);  delay(stepDelay * 10);
+// Upright first, THEN rotate. This is the anti-tipping sequence.
+void goUpright(int grip) {
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, HOME_ELBOW));      delay(400);
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, HOME_SHOULDER)); delay(400);
+  pwm.setPWM(CH_WRIST, 0, clampPulse(CH_WRIST, HOME_WRIST));      delay(400);
+  pwm.setPWM(CH_GRIPPER, 0, grip);                                delay(600);
 }
 
-// Go upright first (mass centered), then rotate base - avoids tipping
-void rotateBaseSafe(int targetBase) {
-  moveArmSafe(P_HOME_BASE, P_HOME_SHOULDER, P_HOME_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED, 25);
-  delay(600);                                   // let it settle upright
-  setJointPulse(CH_BASE, targetBase);           // rotate only while compact
-  delay(900);
+void rotateBaseSlow(int target) {
+  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, target));
+  delay(1000);              // slow, small rotation
 }
 
 void setup() {
@@ -89,40 +92,38 @@ void setup() {
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(50);
 
-  Serial.println(F("Initializing to compact home pose..."));
-  moveArmSafe(P_HOME_BASE, P_HOME_SHOULDER, P_HOME_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
-  delay(2000);
+  Serial.println(F("MINIMAL SAFE MODE - holding upright 5s"));
+  moveArmSafe(HOME_BASE, HOME_SHOULDER, HOME_ELBOW, HOME_WRIST, GRIPPER_OPEN);
+  delay(5000);              // time to support the arm
 }
 
 void loop() {
-  Serial.println(F("1. Reach to pick zone (compact lean)..."));
-  moveArmSafe(P_REACH_BASE, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
-  delay(800);
+  Serial.println(F("1. Lean slightly to object (tiny)"));
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, REACH_SHOULDER)); delay(500);
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, REACH_ELBOW));           delay(700);
 
-  Serial.println(F("2. Close gripper..."));
-  setJointPulse(CH_GRIPPER, GRIPPER_CLOSED);
-  delay(700);
+  Serial.println(F("2. Grip"));
+  pwm.setPWM(CH_GRIPPER, 0, GRIPPER_CLOSED); delay(700);
 
-  Serial.println(F("3. Lift upright (balance)..."));
-  moveArmSafe(P_REACH_BASE, P_HOME_SHOULDER, P_HOME_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED);
-  delay(800);
+  Serial.println(F("3. Back upright"));
+  goUpright(GRIPPER_CLOSED);
 
-  Serial.println(F("4. Rotate base to RED bin (arm compact)..."));
-  rotateBaseSafe(BIN_RED);
+  Serial.println(F("4. Rotate to RED bin (upright, tiny)"));
+  rotateBaseSlow(BIN_RED);
 
-  Serial.println(F("5. Lower to bin..."));
-  moveArmSafe(BIN_RED, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED);
-  delay(700);
+  Serial.println(F("5. Tiny lean over bin"));
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, REACH_SHOULDER)); delay(500);
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, REACH_ELBOW));           delay(700);
 
-  Serial.println(F("6. Release..."));
-  setJointPulse(CH_GRIPPER, GRIPPER_OPEN);
-  delay(700);
+  Serial.println(F("6. Release"));
+  pwm.setPWM(CH_GRIPPER, 0, GRIPPER_OPEN); delay(700);
 
-  Serial.println(F("7. Lift upright..."));
-  moveArmSafe(BIN_RED, P_HOME_SHOULDER, P_HOME_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
-  delay(600);
+  Serial.println(F("7. Back upright"));
+  goUpright(GRIPPER_OPEN);
 
-  Serial.println(F("8. Return to home..."));
-  rotateBaseSafe(P_HOME_BASE);
-  delay(2000);
+  Serial.println(F("8. Rotate home"));
+  rotateBaseSlow(HOME_BASE);
+
+  Serial.println(F("Cycle done - pausing 3s"));
+  delay(3000);
 }
