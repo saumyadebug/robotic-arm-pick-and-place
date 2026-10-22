@@ -29,11 +29,11 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 #define CH_GRIPPER    7
 
 // --- HARD SAFE CLAMPS (small on purpose) ---
-#define BASE_MIN      340
-#define BASE_MAX      410
-#define SHOULDER_MIN  250
+#define BASE_MIN      330
+#define BASE_MAX      420
+#define SHOULDER_MIN  215
 #define SHOULDER_MAX  275
-#define ELBOW_MIN     290
+#define ELBOW_MIN     240
 #define ELBOW_MAX     310
 #define WRIST_MIN     370
 #define WRIST_MAX     380
@@ -47,14 +47,14 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 #define HOME_ELBOW    300
 #define HOME_WRIST    375
 
-// Slight forward lean / slight forearm drop to reach the object
-#define REACH_SHOULDER 252   // only 8 ticks from home
-#define REACH_ELBOW    292   // only 8 ticks from home
+// Forward lean + forearm drop to reach down to the object
+#define REACH_SHOULDER 220
+#define REACH_ELBOW    245
 
 // Bins: tiny base offsets from center (arm stays upright)
-#define BIN_RED       345
+#define BIN_RED       335
 #define BIN_GREEN     375
-#define BIN_BLUE      405
+#define BIN_BLUE      415
 
 int clampPulse(uint8_t ch, int p) {
   if (ch == CH_BASE)     return constrain(p, BASE_MIN, BASE_MAX);
@@ -98,9 +98,9 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(F("1. Lean slightly to object (tiny)"));
-  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, REACH_SHOULDER)); delay(500);
-  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, REACH_ELBOW));           delay(700);
+  Serial.println(F("1. Lean down to object (slow)"));
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, REACH_SHOULDER)); delay(700);
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, REACH_ELBOW));           delay(900);
 
   Serial.println(F("2. Grip"));
   pwm.setPWM(CH_GRIPPER, 0, GRIPPER_CLOSED); delay(700);
@@ -111,9 +111,9 @@ void loop() {
   Serial.println(F("4. Rotate to RED bin (upright, tiny)"));
   rotateBaseSlow(BIN_RED);
 
-  Serial.println(F("5. Tiny lean over bin"));
-  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, REACH_SHOULDER)); delay(500);
-  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, REACH_ELBOW));           delay(700);
+  Serial.println(F("5. Lean down over bin (slow)"));
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, REACH_SHOULDER)); delay(700);
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, REACH_ELBOW));           delay(900);
 
   Serial.println(F("6. Release"));
   pwm.setPWM(CH_GRIPPER, 0, GRIPPER_OPEN); delay(700);
