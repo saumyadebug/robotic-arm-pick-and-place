@@ -1,128 +1,124 @@
-# Implementation Plan — Robotic Arm Pick-and-Place (Stabilization Focus)
+# Implementation Plan — Robotic Arm Pick-and-Place + Sensor Integration
 
-**Project:** 6-DOF Robotic Arm Pick-and-Place and Color Sorting (current iteration: 4-DOF pick-and-place)
+**Project:** 4-DOF + gripper robotic arm (6-DOF frame, wrist roll deferred)
 **Repository:** https://github.com/saumyadebug/robotic-arm-pick-and-place
-**Report (poster):** `24BRS1075_24BRS1065_24BRS1126_Poster_A3 (7).pdf`
-**Version:** 1.2 (pick-and-place stabilization)
-**Date:** 2026-10-22
+**Version:** 1.3 (stable elbow-reach + sensor bring-up)
+**Date:** 2026-10-23
 
 ---
 
-## 1. Purpose
+## 1. Current scope
 
-The project report defines the full target system (6-DOF, six MG995 servos, 4 color bins).
-For this iteration the priority is narrower and explicit: **make the arm move reliably across all
-joints, make the gripper work properly, prevent mechanical collision/collapse, and complete a
-stable pick-and-place cycle.** Yellow color sorting and the extra (6th) DOF are deferred until
-base motion is stable.
+The arm must complete a stable pick-and-place cycle and sort Red/Green/Blue objects using:
+- **HC-SR04** ultrasonic sensor for pick-zone detection.
+- **TCS3200** color sensor for RGB classification.
 
----
+The shoulder no longer performs the deep reach. The shoulder stays vertical and the elbow does the reach, so the heavy upper arm remains balanced over the base. The base rotates only while the arm is folded upright.
 
-## 2. Current Focus & Deferred Items
-
-### In scope now
-- Reliable 4-DOF motion (base, shoulder, elbow, wrist) + gripper.
-- Safe, sequential joint motion with per-joint pulse clamping to avoid over-travel.
-- Stable grip open/close without servo stalling.
-- Complete pick-and-place cycle (approach, grasp, lift, transport, release, home).
-- Debounced ultrasonic triggering and R/G/B color sorting.
-
-### Deferred (not in this iteration)
-- Yellow color detection and 4th bin.
-- 6th DOF (wrist roll) servo integration.
-- Inverse kinematics and smooth trajectory profiles.
+Deferred: Yellow sorting, wrist-roll (6th DOF), inverse kinematics, S-curve trajectories.
 
 ---
 
-## 3. Implementation Phases
+## 2. Calibrated hardware state
 
-### Phase 1 — Motion Stabilization (current)
-- [x] Add per-joint safe pulse limits and clamping in `pick_and_place` and `integrated_sorting`.
-- [x] Replace simultaneous joint updates with sequential updates (`moveArmSafe`) to reduce load/collision.
-- [x] Standardize PCA9685 init across sketches.
-- [x] Add ultrasonic debounce (3 consecutive readings).
-- [x] Keep R/G/B color sorting (Yellow deferred).
+| Joint | Channel | Operational range |
+|---|---|---|
+| Base | 0 | 335–415 (center 375) |
+| Shoulder | 1 | 250–275 (center 260, vertical) |
+| Elbow | 2 | 205–310 (center 300, vertical) |
+| Wrist pitch | 6 | fixed 375 |
+| Gripper | 7 | open 120 / closed 200 |
+| PCA9685 ch3 | 3 | **FAULTY — do not use** |
+| Wrist rotation | 4 | **DEAD SERVO — not used** |
 
-### Phase 2 — Gripper Reliability
-- [x] Define gripper open/close pulses (220/420) with margin to avoid stall.
-- [ ] Test grip on soft/rigid objects; adjust pulses per hardware.
-- [ ] Add current-limit awareness (do not command beyond stall).
-
-### Phase 3 — Hardware Bring-up (user actions)
-- [ ] Calibrate each joint with `joint_calibration` and update limits in code.
-- [ ] Verify power supply (XL4016 set to 5-6 V, ≥6 A peak, common ground, 2200 µF cap).
-- [ ] Secure all horns/screws; check for physical interference before powered motion.
-- [ ] Run `servo_testing` on each channel individually before integrated motion.
-
-### Phase 4 — Validation
-- [ ] Dry run (no payload) x10 cycles without collision.
-- [ ] Loaded run (≤180 g) x10 cycles.
-- [ ] Document results in `tests/pick_and_place_test_results.md`.
-
-### Phase 5 — Future (backlog)
-- [ ] Add Yellow sorting and 4th bin.
-- [ ] Add 6th DOF (wrist roll).
-- [ ] Implement trapezoidal/S-curve interpolation.
-- [ ] Develop inverse kinematics.
+Sensor pins:
+- HC-SR04: TRIG = D9, ECHO = D10, VCC = 5V, GND = GND.
+- TCS3200: S0 = D4, S1 = D5, S2 = D6, S3 = D7, OUT = D8, OE = GND, VCC = 5V, GND = GND.
 
 ---
 
-## 4. Change Summary (this iteration)
+## 3. Implementation phases
 
-### 4.1 Added
-- Per-joint safe pulse limits and `clampPulse()` in firmware.
-- Sequential joint motion (`moveArmSafe`) to reduce simultaneous load.
-- Ultrasonic debounce (3 readings).
-- Hardware bring-up checklist (Section 3, Phase 3).
+### Phase 1 — Motion stabilization (complete)
+- [x] Add per-joint operational clamps.
+- [x] Replace simultaneous joint updates with sequential movement.
+- [x] Keep the shoulder vertical; elbow-only reach.
+- [x] Staged lift: elbow first, then shoulder.
+- [x] Rotate base only while upright.
+- [x] Fix gripper state when returning home.
 
-### 4.2 Changed
-- `pick_and_place.ino`: sequential motion, clamped pulses, standardized init.
-- `integrated_sorting.ino`: clamped pulses, debounce, standardized init; R/G/B only.
-- `color_sensor_test.ino`: reverted to R/G/B classification.
-- README status: In Progress (pick-and-place stabilization).
-- Docs/tests reverted to 4-DOF R/G/B baseline where previously extended.
+### Phase 2 — Sensor bring-up (in progress)
+- [x] Integrate HC-SR04 debounce (3 consecutive readings) in firmware.
+- [x] Integrate TCS3200 R/G/B/C scanning in firmware.
+- [x] Add standalone test sketches for both sensors.
+- [ ] Wire both sensors on the hardware.
+- [ ] Verify ultrasonic 2–10 cm window.
+- [ ] Verify red/green/blue readings and adjust `DARK_LIMIT` / `MARGIN_PCT`.
+- [ ] Verify sensor-to-arm integration with the base clamped.
 
-### 4.3 Removed (reverted from prior iteration)
-- Wrist roll (6th DOF) channel support.
-- Yellow color detection and 4th bin.
-- Corresponding test rows (channel 5, Yellow cycle).
+### Phase 3 — Validation
+- [ ] 3 clean dry-run sorting cycles (no payload).
+- [ ] 10 dry-run cycles.
+- [ ] Loaded cycles (≤180 g).
+- [ ] Record results in `tests/`.
+
+### Phase 4 — Deferred backlog
+- [ ] Yellow sorting and 4th bin.
+- [ ] Replace wrist-rotation servo / 6th DOF.
+- [ ] Trapezoidal or S-curve interpolation.
+- [ ] Inverse kinematics.
 
 ---
 
-## 5. Hardware Actions Required (user)
+## 4. Change summary (this iteration)
 
-1. **Power:** Set XL4016 output to 5.0-6.0 V; ensure ≥6 A peak capability; tie buck GND to Arduino GND; install 2200 µF cap across PCA9685 V+/GND.
-2. **Mechanical:** Tighten servo horns and link screws; verify no link hits another during full range; add mechanical stops if needed.
-3. **Calibration:** Run `joint_calibration` per joint; record min/max in `tests/servo_test_results.md` and update limits in code.
-4. **Gripper:** Test open/close on actual objects; adjust `GRIPPER_OPEN`/`GRIPPER_CLOSED` to avoid stall.
-5. **Bring-up order:** `servo_testing` (each channel) → `end_effector_test` → `pick_and_place` (no payload) → loaded test.
+### Added
+- Integrated FSM in `integrated_sorting.ino` using the stable elbow-reach motion.
+- TCS3200 clear-channel reading and relative color classification.
+- Sensor wiring and step-by-step bring-up guide (`docs/sensor_integration.md`).
+- Safe-range servo test and corrected gripper test.
+- Updated pin map, safe motion chart, troubleshooting, and testing procedure.
+
+### Changed
+- `pick_and_place.ino`: elbow-only reach; staged lift; gripper remains open when rotating home.
+- `integrated_sorting.ino`: latest channel map and safety clamps; sensor retry logic.
+- `end_effector_test.ino`: channel 7, open 120 / closed 200.
+- `servo_testing.ino`: only working channels, small safe ranges, skip ch3/ch4.
+- `joint_calibration.ino`: calibrated range table and faulty-channel warnings.
+- `color_sensor_test.ino`: relative RGB classification, clear channel, noise averaging.
+
+### Removed / deferred
+- Yellow sorting and 4th bin.
+- Wrist-roll (6th DOF) integration.
 
 ---
 
-## 6. Risk & Mitigation
+## 5. Hardware actions required
+
+1. **Power:** XL4016 output 5–6 V; ≥6 A peak; buck GND tied to Arduino GND; 2200 µF across PCA9685 V+/GND.
+2. **Base:** clamp it to the table before any powered test.
+3. **Sensors:** wire per `hardware/pin_connections.md`; mount HC-SR04 facing the pick zone and TCS3200 1.5–3.0 cm above the object, shaded from room light.
+4. **Bring-up order:** servo test → gripper test → ultrasonic test → color test → pick_and_place dry run → integrated sorting.
+5. **Support the arm** during the first 6-second startup recovery.
+
+---
+
+## 6. Risks and mitigation
 
 | Risk | Mitigation |
 |---|---|
-| Servo overload / brownout | Sequential motion, adequate PSU, common ground, capacitor |
-| Mechanical collision | Per-joint limits, calibration, physical stops |
-| Gripper stall | Pulse margin, current monitoring, adjust grip |
-| Misclassification (R/G/B) | Ambient shielding, white balance |
+| Shoulder collapse | shoulder stays vertical; elbow-only reach; staged lift |
+| Base tipping | base rotates only while upright; base clamped to table |
+| Servo brownout | external 5–6 V supply; common ground; 2200 µF capacitor; sequential motion |
+| Color misclassification | shade sensor; 1.5–3.0 cm distance; tune `DARK_LIMIT` and `MARGIN_PCT` |
+| Ultrasonic false trigger | 3-reading debounce; flat target; secure wiring |
 
 ---
 
-## 7. Acceptance Criteria
+## 7. Acceptance criteria
 
-- [ ] All 4 joints move within calibrated limits without collision.
-- [ ] Gripper opens/closes reliably on test objects.
-- [ ] 10 consecutive no-payload pick-and-place cycles pass.
-- [ ] 10 loaded cycles (≤180 g) pass.
-- [ ] Results documented.
-
----
-
-## 8. Deliverables
-
-1. Updated firmware and docs.
-2. `IMPLEMENTATION_PLAN.md`.
-3. `docs/change_report.pdf`.
-4. Git commit and push.
+- [ ] Arm completes reach → grip → lift → rotate → lower → release → home without collapsing.
+- [ ] Ultrasonic detects an object at 2–10 cm and ignores the empty zone.
+- [ ] TCS3200 correctly identifies red, green, and blue test objects.
+- [ ] Integrated FSM sorts one object to the matching bin.
+- [ ] Three consecutive sorting cycles complete without manual intervention.

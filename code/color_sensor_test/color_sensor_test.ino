@@ -2,65 +2,90 @@
  * TCS3200 / TCS230 Color Sensor Test
  * Robotic Arm Pick and Place System
  *
- * Description:
- * Reads raw photodiode frequencies for Red, Green, and Blue filter modes
- * and categorizes the scanned object into dominant color categories.
+ * WIRING (Arduino Uno):
+ *   TCS3200 VCC  -> 5V
+ *   TCS3200 GND  -> GND
+ *   TCS3200 S0   -> D4
+ *   TCS3200 S1   -> D5
+ *   TCS3200 S2   -> D6
+ *   TCS3200 S3   -> D7
+ *   TCS3200 OUT  -> D8
+ *   TCS3200 OE   -> GND (if the module exposes OE)
+ *
+ * Place the object 1.5-3.0 cm below the sensor, in shade.
+ * Lower pulse width = brighter channel.
  */
 
-// Pin definitions
-#define S0 4
-#define S1 5
-#define S2 6
-#define S3 7
-#define SENSOR_OUT 8
+#define TCS_S0    4
+#define TCS_S1    5
+#define TCS_S2    6
+#define TCS_S3    7
+#define TCS_OUT   8
+
+const unsigned int DARK_LIMIT = 400;   // above this = no useful object
+const unsigned int MARGIN_PCT = 85;    // dominant channel must be 15% stronger
 
 void setup() {
   Serial.begin(115200);
 
-  pinMode(S0, OUTPUT);
-  pinMode(S1, OUTPUT);
-  pinMode(S2, OUTPUT);
-  pinMode(S3, OUTPUT);
-  pinMode(SENSOR_OUT, INPUT);
+  pinMode(TCS_S0, OUTPUT);
+  pinMode(TCS_S1, OUTPUT);
+  pinMode(TCS_S2, OUTPUT);
+  pinMode(TCS_S3, OUTPUT);
+  pinMode(TCS_OUT, INPUT);
 
-  // Set frequency scaling to 20%
-  digitalWrite(S0, HIGH);
-  digitalWrite(S1, LOW);
+  // Frequency scaling 20%
+  digitalWrite(TCS_S0, HIGH);
+  digitalWrite(TCS_S1, LOW);
 
-  Serial.println(F("TCS3200 Color Sensor Test Initialized."));
+  Serial.println(F("TCS3200 test ready. Show RED / GREEN / BLUE objects."));
 }
 
-int readFrequency(bool s2Val, bool s3Val) {
-  digitalWrite(S2, s2Val);
-  digitalWrite(S3, s3Val);
-  delay(10);
-  return pulseIn(SENSOR_OUT, LOW, 50000);
+unsigned int readChannel(bool s2, bool s3) {
+  digitalWrite(TCS_S2, s2);
+  digitalWrite(TCS_S3, s3);
+  delay(8);
+
+  // Average 3 readings to reduce flicker/noise
+  unsigned long total = 0;
+  for (uint8_t i = 0; i < 3; i++) {
+    unsigned long v = pulseIn(TCS_OUT, LOW, 50000UL);
+    if (v == 0) v = 50000;
+    total += v;
+    delay(3);
+  }
+  return (unsigned int)(total / 3);
 }
 
 void loop() {
-  // Read Red
-  int redFreq = readFrequency(LOW, LOW);
-  // Read Blue
-  int blueFreq = readFrequency(LOW, HIGH);
-  // Read Clear (No filter)
-  int clearFreq = readFrequency(HIGH, LOW);
-  // Read Green
-  int greenFreq = readFrequency(HIGH, HIGH);
+  unsigned int r = readChannel(LOW,  LOW);   // Red filter
+  unsigned int g = readChannel(HIGH, HIGH);  // Green filter
+  unsigned int b = readChannel(LOW,  HIGH);  // Blue filter
+  unsigned int c = readChannel(HIGH, LOW);   // Clear / no filter
 
-  Serial.print(F("R: ")); Serial.print(redFreq);
-  Serial.print(F(" | G: ")); Serial.print(greenFreq);
-  Serial.print(F(" | B: ")); Serial.print(blueFreq);
-  Serial.print(F(" | C: ")); Serial.print(clearFreq);
+  Serial.print(F("R: ")); Serial.print(r);
+  Serial.print(F(" | G: ")); Serial.print(g);
+  Serial.print(F(" | B: ")); Serial.print(b);
+  Serial.print(F(" | C: ")); Serial.print(c);
 
-  // Note: For TCS3200, LOWER pulse duration means HIGHER intensity
-  if (redFreq < greenFreq && redFreq < blueFreq && redFreq < 200) {
-    Serial.println(F(" => Detected: RED"));
-  } else if (greenFreq < redFreq && greenFreq < blueFreq && greenFreq < 250) {
-    Serial.println(F(" => Detected: GREEN"));
-  } else if (blueFreq < redFreq && blueFreq < greenFreq && blueFreq < 250) {
-    Serial.println(F(" => Detected: BLUE"));
+  unsigned int minVal = min(r, min(g, b));
+
+  if (minVal == 0 || minVal > DARK_LIMIT) {
+    Serial.println(F(" => UNKNOWN / NONE"));
+  } else if (r == minVal &&
+             (unsigned long)r * 100UL < (unsigned long)g * MARGIN_PCT &&
+             (unsigned long)r * 100UL < (unsigned long)b * MARGIN_PCT) {
+    Serial.println(F(" => RED"));
+  } else if (g == minVal &&
+             (unsigned long)g * 100UL < (unsigned long)r * MARGIN_PCT &&
+             (unsigned long)g * 100UL < (unsigned long)b * MARGIN_PCT) {
+    Serial.println(F(" => GREEN"));
+  } else if (b == minVal &&
+             (unsigned long)b * 100UL < (unsigned long)r * MARGIN_PCT &&
+             (unsigned long)b * 100UL < (unsigned long)g * MARGIN_PCT) {
+    Serial.println(F(" => BLUE"));
   } else {
-    Serial.println(F(" => Detected: UNKNOWN / NONE"));
+    Serial.println(F(" => UNKNOWN / MIXED"));
   }
 
   delay(500);

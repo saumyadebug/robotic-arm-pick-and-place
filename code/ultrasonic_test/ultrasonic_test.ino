@@ -2,21 +2,27 @@
  * HC-SR04 Ultrasonic Distance Sensor Test
  * Robotic Arm Pick and Place System
  *
- * Description:
- * Measures object distance in front of the conveyor or pick zone.
- * Triggers object presence flag when an item is within pick threshold.
+ * WIRING (Arduino Uno):
+ *   HC-SR04 VCC  -> 5V
+ *   HC-SR04 GND  -> GND
+ *   HC-SR04 TRIG -> D9
+ *   HC-SR04 ECHO -> D10
+ *
+ * Mount the sensor so it faces the pick zone. The integrated sorting
+ * sketch triggers when an object is between 2 cm and 10 cm away.
  */
 
 #define TRIG_PIN 9
 #define ECHO_PIN 10
 
-const float OBJECT_DETECT_THRESHOLD_CM = 10.0; // Trigger threshold
+const float OBJECT_MIN_CM = 2.0;
+const float OBJECT_MAX_CM = 10.0;
 
 void setup() {
   Serial.begin(115200);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
-  Serial.println(F("HC-SR04 Ultrasonic Sensor Test Initialized."));
+  Serial.println(F("HC-SR04 test ready. Object trigger window: 2-10 cm."));
 }
 
 float measureDistanceCM() {
@@ -26,8 +32,8 @@ float measureDistanceCM() {
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
 
-  long duration = pulseIn(ECHO_PIN, HIGH, 30000); // 30ms timeout
-  if (duration == 0) return -1.0; // Out of range or timeout
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  if (duration == 0) return -1.0;
 
   return (duration * 0.0343) / 2.0;
 }
@@ -40,14 +46,14 @@ void loop() {
     Serial.print(distance);
     Serial.print(F(" cm"));
 
-    if (distance <= OBJECT_DETECT_THRESHOLD_CM) {
-      Serial.println(F(" -> [OBJECT DETECTED IN PICK ZONE!]"));
+    if (distance >= OBJECT_MIN_CM && distance <= OBJECT_MAX_CM) {
+      Serial.println(F(" -> [OBJECT IN PICK ZONE]"));
     } else {
-      Serial.println(F(" -> [Zone Clear]"));
+      Serial.println(F(" -> [zone clear]"));
     }
   } else {
-    Serial.println(F("Sensor timeout / Object out of range."));
+    Serial.println(F("Sensor timeout / out of range."));
   }
 
-  delay(200);
+  delay(250);
 }

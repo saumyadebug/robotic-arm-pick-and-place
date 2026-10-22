@@ -1,18 +1,26 @@
 # Pick and Place Integration Test Results
 
-10-Cycle Autonomous Test Run:
+**Status: in progress (2026-10-23).**
 
-| Cycle # | Object Color | Detection Time (s) | Pick Success | Sort Bin Target | Placement Accuracy | Total Cycle Time (s) |
-|---------|--------------|--------------------|--------------|-----------------|--------------------|----------------------|
-| 1 | RED | 0.4 | YES | Bin 1 (Red) | Pass | 6.7 |
-| 2 | GREEN | 0.5 | YES | Bin 2 (Green) | Pass | 6.8 |
-| 3 | BLUE | 0.4 | YES | Bin 3 (Blue) | Pass | 6.6 |
-| 4 | RED | 0.4 | YES | Bin 1 (Red) | Pass | 6.9 |
-| 5 | BLUE | 0.4 | YES | Bin 3 (Blue) | Pass | 6.7 |
-| 6 | GREEN | 0.5 | YES | Bin 2 (Green) | Pass | 7.0 |
-| 7 | RED | 0.4 | YES | Bin 1 (Red) | Pass | 6.8 |
-| 8 | BLUE | 0.4 | YES | Bin 3 (Blue) | Pass | 6.6 |
-| 9 | GREEN | 0.4 | YES | Bin 2 (Green) | Pass | 6.9 |
-| 10 | RED | 0.4 | YES | Bin 1 (Red) | Pass | 6.7 |
+Verified so far:
+- Firmware completes the 8-step sequence and returns to home without an Arduino reset in serial logs.
+- The arm is stable with the shoulder vertical and elbow-only reach.
+- Physical grip/release and sensor-triggered sorting still need to be tested.
 
-**Summary**: 10/10 successful sorting cycles (100% success rate on test batch).
+Do **not** record a cycle as PASS until the object is actually picked, transported, and released in the correct bin.
+
+## Test log
+
+| Cycle # | Object color | Detection (cm) | Pick success | Target bin | Placement | Cycle time (s) | Notes |
+|---|---|---|---|---|---|---|---|
+| 1 | — | — | — | — | — | — | pending |
+| 2 | — | — | — | — | — | — | pending |
+| 3 | — | — | — | — | — | — | pending |
+
+## Run conditions (fill in)
+
+- Payload mass: ______ g
+- Base clamped to table: yes / no
+- Supply voltage at PCA9685 V+: ______ V
+- Sensor distance: ______ cm
+- Firmware commit: ______

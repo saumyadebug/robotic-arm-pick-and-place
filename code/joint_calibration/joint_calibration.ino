@@ -26,7 +26,16 @@ void setup() {
   Serial.println(F("========================================"));
   Serial.println(F("Format: <channel> <pulse_ticks>"));
   Serial.println(F("Example: '0 375' (moves channel 0 to tick 375)"));
-  Serial.println(F("Typical pulse tick range: 150 to 600"));
+  Serial.println(F(""));
+  Serial.println(F("Calibrated working ranges:"));
+  Serial.println(F("  ch0 Base      335-415 (center 375)"));
+  Serial.println(F("  ch1 Shoulder  250-275 (center 260, vertical)"));
+  Serial.println(F("  ch2 Elbow     205-310 (center 300, vertical)"));
+  Serial.println(F("  ch6 Wrist     around 375"));
+  Serial.println(F("  ch7 Gripper   open 120 / closed 200"));
+  Serial.println(F(""));
+  Serial.println(F("WARNING: ch3 is FAULTY. ch4 wrist-rotation servo is DEAD."));
+  Serial.println(F("Support the arm before moving any joint."));
 }
 
 void loop() {
@@ -34,7 +43,11 @@ void loop() {
     int channel = Serial.parseInt();
     int pulse = Serial.parseInt();
 
-    if (channel >= 0 && channel <= 15 && pulse >= 50 && pulse <= 650) {
+    if (channel == 3) {
+      Serial.println(F("Channel 3 is faulty - command ignored."));
+    } else if (channel == 4) {
+      Serial.println(F("Channel 4 wrist-rotation servo is dead - command ignored."));
+    } else if (channel >= 0 && channel <= 15 && pulse >= 50 && pulse <= 650) {
       Serial.print(F("Moving Channel "));
       Serial.print(channel);
       Serial.print(F(" -> Pulse: "));

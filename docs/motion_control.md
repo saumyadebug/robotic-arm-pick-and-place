@@ -16,3 +16,24 @@ $$\theta_2 = \text{atan2}(s, r) - \text{atan2}(L_2 \sin\theta_3, L_1 + L_2 \cos\
 
 ## Trajectory Smoothing
 Abrupt step changes in pulse values cause mechanical jerk and overshoot. Smooth trapezoidal velocity profiles or linear interpolation (LERP) are implemented between consecutive waypoints.
+
+---
+
+## Current implementation (2026-10-23)
+
+This iteration uses **waypoint motion with operational clamps**, not inverse kinematics.
+
+| Joint | Channel | Operational clamp | Role |
+|---|---|---|---|
+| Base | 0 | 335–415 | rotate only while arm is upright |
+| Shoulder | 1 | 250–275 | stays vertical (260) to keep the arm balanced |
+| Elbow | 2 | 205–310 | performs the reach down |
+| Wrist pitch | 6 | 370–380 | held neutral |
+| Gripper | 7 | 120 open / 200 closed | grasp/release |
+
+Reach sequence: elbow **300 → 278 → 248 → 218**.
+Lift sequence: elbow **218 → 240 → 262 → 284 → 300**, then shoulder back to 260.
+The base rotates only after the arm is folded upright. This avoids the shoulder collapse seen with deep shoulder bends.
+
+The next step after sensor integration is to add interpolation between these waypoints; inverse kinematics remains deferred.
+

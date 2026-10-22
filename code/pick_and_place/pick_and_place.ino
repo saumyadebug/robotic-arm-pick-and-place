@@ -6,15 +6,15 @@
  * front of the base -> servo could not hold it, arm collapsed, and lifting
  * it back up needed more torque than the servo has.
  *
- * New strategy: the SHOULDER STAYS NEAR VERTICAL (260). The reach down is
- * done with the ELBOW only (300 -> 245). That lowers the gripper while the
- * heavy upper arm stays balanced over the base, and lifting back up only
- * moves the light forearm + gripper.
+ * New strategy: the SHOULDER STAYS NEAR VERTICAL (258). The reach down is
+ * done with the ELBOW only (300 -> 278 -> 248 -> 218). That lowers the
+ * gripper while the heavy upper arm stays balanced over the base, and
+ * lifting back up only moves the light forearm + gripper.
  *
  * Channel map:
  *   CH_BASE      0   clamped 335-415
  *   CH_SHOULDER  1   clamped 250-275 (stays vertical)
- *   CH_ELBOW     2   clamped 240-310 (does the reach)
+ *   CH_ELBOW     2   clamped 205-310 (does the reach)
  *   CH_WRIST     6   fixed 375
  *   CH_GRIPPER   7   open 120 / closed 200
  */

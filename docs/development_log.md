@@ -14,5 +14,14 @@
 - Developed integrated finite-state machine coordinating sensor trigger, pick kinematics, color sorting bins, and homing.
 
 ### Phase 4: Verification & Benchmarking
-- Conducted endurance tests (50 continuous cycles).
-- Documented findings in test reports and created user guide.
+- Bench-tested individual subsystems and documented the procedure.
+- Full 10-cycle integration and endurance validation still pending after the stability rework.
+
+### Phase 5: Stability Rework & Sensor Integration (2026-10-23)
+- Calibrated working channels: base 0, shoulder 1, elbow 2, wrist 6, gripper 7.
+- Identified PCA9685 channel 3 as faulty and the wrist-rotation servo on channel 4 as dead.
+- Replaced the dangerous shoulder-reach motion with an elbow-only reach; the shoulder stays vertical.
+- Added staged lifting (elbow first) so the arm can recover from the reach position.
+- Added operational clamps: base 335–415, shoulder 250–275, elbow 205–310, gripper 120/200.
+- Rewrote `integrated_sorting.ino` with HC-SR04 debounce, TCS3200 R/G/B/C scanning, retries, and the stable motion sequence.
+- Added sensor wiring guide (`docs/sensor_integration.md`) and updated the testing procedure.

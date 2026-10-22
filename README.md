@@ -1,6 +1,6 @@
-# 6-DOF Robotic Arm Pick-and-Place and Color Sorting
+# 4-DOF + Gripper Robotic Arm Pick-and-Place and Color Sorting
 
-An articulated 6-degree-of-freedom (6-DOF) metal robotic arm designed for automated pick-and-place operations and color-based object sorting. Controlled via an Arduino microcontroller and a PCA9685 16-channel 12-bit PWM servo driver, the system integrates an ultrasonic distance sensor for pick-zone detection and an RGB color sensor (TCS3200) for autonomous material classification.
+An articulated 4-DOF metal robotic arm (6-DOF frame; wrist roll deferred) designed for automated pick-and-place operations and color-based object sorting. Controlled via an Arduino Uno and a PCA9685 16-channel 12-bit PWM servo driver, the system integrates an ultrasonic distance sensor for pick-zone detection and an RGB color sensor (TCS3200) for autonomous material classification.
 
 ---
 
@@ -27,26 +27,27 @@ This robotics and embedded systems project focuses on robotic joint control, mul
 ---
 
 ## Project Status
-**In Progress** — Focus: reliable pick-and-place motion and gripper operation without mechanical collision. Color sorting currently supports Red/Green/Blue; Yellow and extra DOF deferred until base motion is stable.
+**In Progress** — the elbow-reach pick-and-place motion is stable, and the HC-SR04 / TCS3200 integration code is ready. Current focus: wire and verify both sensors on the hardware, then run Red/Green/Blue sorting. Yellow and wrist roll are deferred.
 
 ---
 
 ## Current Progress
-- [x] Mechanical assembly of the 6-DOF robotic arm completed.
+- [x] Mechanical assembly of the robotic arm completed.
 - [x] Individual servo motors tested for range and motion stability.
-- [x] End effector gripper mechanism tested for grasp force and compliance.
+- [x] End effector gripper tested for grasp force and compliance.
 - [x] Arduino and PCA9685 16-channel PWM servo driver integrated over I2C.
 - [x] Regulated power supply configured using a 7.4V battery and step-down buck converter.
-- [x] Basic pick-and-place kinematic motion tested.
+- [x] Safe joint ranges calibrated: base 335–415, shoulder 250–275, elbow 205–310, gripper 120/200.
+- [x] Stable elbow-reach pick-and-place motion tested (shoulder stays vertical).
 - [x] HC-SR04 ultrasonic sensor tested for pick-zone proximity triggering.
-- [🔄] TCS3200 color sensor integrated; Red/Green/Blue sorting in progress.
+- [🔄] TCS3200 color sensor wired; Red/Green/Blue calibration and full sorting run in progress.
 
 ---
 
 ## Hardware Components
-- **6-DOF Metal Robotic Arm Frame**: Sturdy multi-joint mechanical chassis.
+- **Metal Robotic Arm Frame**: 6-DOF frame, with 4 active axes + gripper in this iteration.
 - **Microcontroller**: Arduino Uno R3 / Mega 2560.
-- **Servo Motors**: MG995 / MG996R high-torque metal gear servos (Joints 1 to 6).
+- **Servo Motors**: MG995 / MG996R high-torque metal gear servos for base, shoulder and elbow; SG90/MG90S for wrist pitch and gripper.
 - **Servo Driver**: PCA9685 16-Channel 12-Bit PWM I2C Driver board.
 - **Ultrasonic Distance Sensor**: HC-SR04 for non-contact object detection.
 - **Color Sensor**: TCS3200 / TCS230 RGB light-to-frequency converter.
@@ -159,10 +160,24 @@ robotic-arm-pick-and-place/
 | Buck Converter (-) | GND (Screw Terminal)| Servo Power Ground (**tied to Arduino GND**) |
 
 ### Sensors to Arduino
-- **HC-SR04**: `TRIG` -> D9, `ECHO` -> D10, `VCC` -> 5V, `GND` -> GND
-- **TCS3200**: `S0` -> D4, `S1` -> D5, `S2` -> D6, `S3` -> D7, `OUT` -> D8, `VCC` -> 5V, `GND` -> GND
+| Sensor | Sensor Pin | Arduino Uno Pin |
+|---|---|---|
+| HC-SR04 | VCC / GND / TRIG / ECHO | 5V / GND / **D9** / **D10** |
+| TCS3200 | VCC / GND / S0 / S1 / S2 / S3 / OUT / OE | 5V / GND / **D4** / **D5** / **D6** / **D7** / **D8** / GND |
 
-*For the complete pinout matrix, see [hardware/pin_connections.md](hardware/pin_connections.md).*
+*For the complete pinout matrix and grounding checklist, see [hardware/pin_connections.md](hardware/pin_connections.md).*
+*For the step-by-step sensor wiring and calibration guide, see [docs/sensor_integration.md](docs/sensor_integration.md).*
+
+### Servo Channels
+| Channel | Joint | Safe operational range |
+|---|---|---|
+| 0 | Base | 335–415 (center 375) |
+| 1 | Shoulder | 250–275 (center 260) |
+| 2 | Elbow | 205–310 (center 300) |
+| 3 | **FAULTY** | do not use |
+| 4 | Wrist rotation | **servo dead** — not used |
+| 6 | Wrist pitch | fixed 375 |
+| 7 | Gripper | open 120 / closed 200 |
 
 ---
 
@@ -174,16 +189,17 @@ robotic-arm-pick-and-place/
   - **Adafruit PWM Servo Driver Library**
 
 ### 2. Hardware Assembly & Power
-1. Assemble the arm joints and mount servos for Base, Shoulder, Elbow, Wrist Pitch, Wrist Roll, and Gripper.
+1. Assemble the arm joints and mount the Base, Shoulder, Elbow, Wrist Pitch, and Gripper servos. The wrist-rotation axis is not used in this iteration.
 2. Connect the 7.4V battery to the DC-DC Buck converter input, adjust the converter output to **5V or 6V**, and connect it to the PCA9685 V+ screw terminal.
 3. **Important**: Connect the buck converter ground to Arduino `GND` to establish a shared ground reference.
+4. Wire the HC-SR04 and TCS3200 exactly as shown in [hardware/pin_connections.md](hardware/pin_connections.md). Power sensors from Arduino **5V**, servos from the buck converter.
 
 ### 3. Step-by-Step Bring-up
-1. **Calibrate Servos**: Upload `code/joint_calibration/joint_calibration.ino` and use the Serial Monitor to identify safe pulse bounds (preventing mechanical stall).
-2. **Verify Sensors**:
-   - Run `code/ultrasonic_test/ultrasonic_test.ino` to verify distance triggers.
-   - Run `code/color_sensor_test/color_sensor_test.ino` under operational lighting to log RGB pulse durations.
-3. **Run Integrated Sorting**: Upload `code/integrated_sorting/integrated_sorting.ino` to execute autonomous sorting.
+1. **Calibrate Servos**: Upload `code/joint_calibration/joint_calibration.ino` and use the Serial Monitor to identify safe pulse bounds. The current calibrated values are in [docs/safe_motion_chart.md](docs/safe_motion_chart.md).
+2. **Verify Ultrasonic**: Run `code/ultrasonic_test/ultrasonic_test.ino`; confirm 2–10 cm detection at 115200 baud.
+3. **Verify Color Sensor**: Run `code/color_sensor_test/color_sensor_test.ino`; confirm Red/Green/Blue readings at 115200 baud.
+4. **Test the Arm**: Run `code/pick_and_place/pick_and_place.ino` without a payload, with the base clamped and the arm supported during the 6-second startup.
+5. **Run Integrated Sorting**: Upload `code/integrated_sorting/integrated_sorting.ino` to execute autonomous sorting.
 
 ---
 

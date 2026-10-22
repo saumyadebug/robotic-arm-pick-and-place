@@ -1,12 +1,22 @@
 # Experimental Results & Performance Metrics
 
-Summary of system performance benchmarks:
+**Status: not yet measured on the current hardware (2026-10-23).**
 
-- **Sorting Accuracy**: 94% under controlled ambient illumination.
-- **Average Cycle Time**: 6.8 seconds per pick-and-place operation.
-- **Maximum Payload Capacity**: 180 grams at full horizontal arm extension.
-- **Positional Repeatability**: ± 3.5 mm.
-- **Operating Current**:
-  - Standby: 180 mA
-  - Dynamic Motion: 2.4 A
-  - Maximum Transient Spike: 5.2 A
+The values below are **targets** from the project brief, not measured results. Replace them with real measurements after the sensor integration and 10-cycle test.
+
+| Metric | Target | Measured |
+|---|---|---|
+| Sorting accuracy | ≥90% under controlled lighting | pending |
+| Average cycle time | ~7 s | pending |
+| Maximum payload | 180 g | pending |
+| Positional repeatability | ±3.5 mm | pending |
+| Standby current | — | pending |
+| Dynamic current | — | pending |
+| Maximum transient current | — | pending |
+
+## Current verified behavior
+
+- Base, shoulder, elbow, wrist pitch, and gripper respond on channels 0, 1, 2, 6, 7.
+- Elbow-reach pick-and-place completes its programmed sequence without a firmware reset.
+- PCA9685 channel 3 is faulty; wrist-rotation channel 4 is a dead servo.
+- HC-SR04 and TCS3200 test sketches are ready; hardware verification is in progress.

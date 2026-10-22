@@ -1,23 +1,29 @@
 /*
- * Integrated Color Sorting Pick and Place System
- * Robotic Arm Pick and Place Project
+ * Integrated Color Sorting Pick-and-Place
+ * Robotic Arm Pick-and-Place Project
  *
- * Channel mapping (calibrated):
- *   CH_BASE      0   range 200-500, center 375
- *   CH_SHOULDER  1   range 200-340, center 260 (vertical)
- *   CH_ELBOW     2   range 200-420, center 300 (vertical)
- *   CH_WRIST     6   held at 375 (neutral)
- *   CH_GRIPPER   7   open 120, closed 200
+ * HARDWARE (calibrated 2026-10-23)
+ *   PCA9685 servo channels:
+ *     CH_BASE      0   operational clamp 335-415, center 375
+ *     CH_SHOULDER  1   operational clamp 250-275, center 260 (vertical)
+ *     CH_ELBOW     2   operational clamp 205-310, center 300 (vertical)
+ *     CH_WRIST     6   fixed at 375
+ *     CH_GRIPPER   7   open 120 / closed 200
+ *     CH 3 is faulty - never use it.
+ *     CH 4 wrist-rotation servo is dead - not used.
  *
- * FSM:
- * 1. STATE_IDLE      : debounced ultrasonic object detection
- * 2. STATE_COLOR_SCAN: TCS3200 classification (Red / Green / Blue)
- * 3. STATE_PICK      : reach, grip, lift upright
- * 4. STATE_PLACE     : fold upright -> rotate base to bin -> lower -> release
- * 5. STATE_RETURN_HOME
+ *   Sensors (Arduino Uno):
+ *     HC-SR04   VCC=5V  GND=GND  TRIG=D9  ECHO=D10
+ *     TCS3200   VCC=5V  GND=GND  S0=D4 S1=D5 S2=D6 S3=D7 OUT=D8 OE=GND
  *
- * Safety: base only rotates while the arm is folded upright so the heavy
- * metal arm's center of mass stays over the base (prevents tipping).
+ * MOTION SAFETY
+ *   The shoulder stays vertical; the elbow does the reach (300 -> 278 ->
+ *   248 -> 218).  The base rotates ONLY after the arm is folded upright.
+ *   Lifting is staged in the reverse order so the shoulder never has to
+ *   lift the arm from a fully extended position.
+ *
+ * FSM
+ *   IDLE -> COLOR_SCAN -> PICK -> PLACE -> RETURN_HOME -> IDLE
  */
 
 #include <Wire.h>
@@ -25,48 +31,59 @@
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 
-// Hardware Pins
-#define TRIG_PIN 9
-#define ECHO_PIN 10
-#define S0 4
-#define S1 5
-#define S2 6
-#define S3 7
-#define COLOR_OUT 8
+// ---------------- Sensor pins ----------------
+#define TRIG_PIN     9
+#define ECHO_PIN     10
 
-// Servo Channels
+#define TCS_S0       4
+#define TCS_S1       5
+#define TCS_S2       6
+#define TCS_S3       7
+#define TCS_OUT      8
+
+// ---------------- Servo channels ----------------
 #define CH_BASE       0
 #define CH_SHOULDER   1
 #define CH_ELBOW      2
 #define CH_WRIST      6
 #define CH_GRIPPER    7
 
-// Per-joint safe pulse limits (calibrated)
-#define BASE_MIN      200
-#define BASE_MAX      500
-#define SHOULDER_MIN  200
-#define SHOULDER_MAX  340
-#define ELBOW_MIN     200
-#define ELBOW_MAX     420
-#define WRIST_MIN     300
-#define WRIST_MAX     450
+// ---------------- Operational safety clamps ----------------
+#define BASE_MIN      335
+#define BASE_MAX      415
+#define SHOULDER_MIN  250
+#define SHOULDER_MAX  275
+#define ELBOW_MIN     205
+#define ELBOW_MAX     310
+#define WRIST_MIN     370
+#define WRIST_MAX     380
 
 #define GRIPPER_OPEN   120
 #define GRIPPER_CLOSED 200
 
-// Poses
-#define P_HOME_BASE      375
-#define P_HOME_SHOULDER  260
-#define P_HOME_ELBOW     300
-#define P_HOME_WRIST     375
+// ---------------- Poses ----------------
+#define HOME_BASE      375
+#define HOME_SHOULDER  260
+#define HOME_ELBOW     300
+#define HOME_WRIST     375
 
-#define P_REACH_BASE     300
-#define P_REACH_SHOULDER 310
-#define P_REACH_ELBOW    250
+#define REACH_SHOULDER 258
+#define REACH_ELBOW    218
 
-#define BIN_RED          250
-#define BIN_GREEN        375
-#define BIN_BLUE         475
+// Bins are deliberately close to the base centre while the arm is heavy.
+#define BIN_RED        335
+#define BIN_GREEN      375
+#define BIN_BLUE       415
+
+// ---------------- Object detection ----------------
+const float OBJECT_MIN_CM = 2.0;
+const float OBJECT_MAX_CM = 10.0;
+const uint8_t DETECT_DEBOUNCE = 3;
+const uint8_t COLOR_RETRIES = 3;
+
+// TCS3200: lower pulse width = brighter channel.
+const unsigned int COLOR_DARK_LIMIT = 400;  // above this = no useful object
+const unsigned int COLOR_MARGIN_PCT = 85;   // dominant channel must be 15% stronger
 
 enum SystemState {
   STATE_IDLE,
@@ -87,9 +104,10 @@ SystemState currentState = STATE_IDLE;
 ObjectColor detectedColor = COLOR_UNKNOWN;
 
 uint8_t detectCount = 0;
-const uint8_t DETECT_DEBOUNCE = 3;
+uint8_t colorRetries = 0;
 
-int clampPulse(int ch, int pulse) {
+// ---------------- Motion helpers ----------------
+int clampPulse(uint8_t ch, int pulse) {
   if (ch == CH_BASE)     return constrain(pulse, BASE_MIN, BASE_MAX);
   if (ch == CH_SHOULDER) return constrain(pulse, SHOULDER_MIN, SHOULDER_MAX);
   if (ch == CH_ELBOW)    return constrain(pulse, ELBOW_MIN, ELBOW_MAX);
@@ -97,144 +115,231 @@ int clampPulse(int ch, int pulse) {
   return pulse;
 }
 
-void setJoints(int b, int s, int e, int w, int g) {
-  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, b));     delay(15);
-  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, s)); delay(15);
-  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, e));   delay(15);
-  pwm.setPWM(CH_WRIST, 0, clampPulse(CH_WRIST, w));   delay(15);
-  pwm.setPWM(CH_GRIPPER, 0, g);                       delay(120);
+void setP(uint8_t ch, int pulse) {
+  pwm.setPWM(ch, 0, clampPulse(ch, pulse));
 }
 
-void goUpright(int grip) {
-  setJoints(P_HOME_BASE, P_HOME_SHOULDER, P_HOME_ELBOW, P_HOME_WRIST, grip);
-  delay(600);
+// Lower the forearm in small steps; the heavy upper arm stays vertical.
+void reachDown() {
+  setP(CH_SHOULDER, REACH_SHOULDER); delay(400);
+  setP(CH_ELBOW, 278);               delay(500);
+  setP(CH_ELBOW, 248);               delay(500);
+  setP(CH_ELBOW, REACH_ELBOW);       delay(800);
 }
 
-void rotateBaseSafe(int targetBase, int grip) {
-  goUpright(grip);                    // fold upright first
-  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, targetBase));
-  delay(900);                         // rotate while balanced
+// Raise the forearm first, then bring the shoulder back to vertical.
+void liftUpright(int grip) {
+  setP(CH_ELBOW, 240);              delay(550);
+  setP(CH_ELBOW, 262);              delay(550);
+  setP(CH_ELBOW, 284);              delay(550);
+  setP(CH_SHOULDER, HOME_SHOULDER); delay(550);
+  setP(CH_ELBOW, HOME_ELBOW);       delay(650);
+  setP(CH_WRIST, HOME_WRIST);       delay(200);
+  pwm.setPWM(CH_GRIPPER, 0, grip);  delay(500);
 }
 
-float readDistance() {
+// Fold upright before rotating the base.
+void rotateBaseSlow(int targetBase, int grip) {
+  liftUpright(grip);
+  setP(CH_BASE, targetBase);
+  delay(1000);
+}
+
+// ---------------- Sensor helpers ----------------
+float readDistanceCM() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-  long d = pulseIn(ECHO_PIN, HIGH, 30000);
-  return (d == 0) ? 999.0 : (d * 0.0343) / 2.0;
+
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000UL);
+  if (duration == 0) return 999.0;
+  return (duration * 0.0343) / 2.0;
+}
+
+unsigned int readColorChannel(bool s2, bool s3) {
+  digitalWrite(TCS_S2, s2);
+  digitalWrite(TCS_S3, s3);
+  delay(8);
+  return pulseIn(TCS_OUT, LOW, 50000UL);
 }
 
 ObjectColor scanColor() {
-  digitalWrite(S2, LOW); digitalWrite(S3, LOW);
-  delay(10);
-  int r = pulseIn(COLOR_OUT, LOW, 40000);
+  // TCS3200 filter selection:
+  //   S2=LOW,  S3=LOW  -> Red
+  //   S2=HIGH, S3=HIGH -> Green
+  //   S2=LOW,  S3=HIGH -> Blue
+  //   S2=HIGH, S3=LOW  -> Clear (no filter)
+  unsigned int r = readColorChannel(LOW,  LOW);
+  unsigned int g = readColorChannel(HIGH, HIGH);
+  unsigned int b = readColorChannel(LOW,  HIGH);
+  unsigned int c = readColorChannel(HIGH, LOW);
 
-  digitalWrite(S2, HIGH); digitalWrite(S3, HIGH);
-  delay(10);
-  int g = pulseIn(COLOR_OUT, LOW, 40000);
+  Serial.print(F("Scan -> R:"));
+  Serial.print(r);
+  Serial.print(F(" G:"));
+  Serial.print(g);
+  Serial.print(F(" B:"));
+  Serial.print(b);
+  Serial.print(F(" C:"));
+  Serial.println(c);
 
-  digitalWrite(S2, LOW); digitalWrite(S3, HIGH);
-  delay(10);
-  int b = pulseIn(COLOR_OUT, LOW, 40000);
+  unsigned int minVal = min(r, min(g, b));
+  if (minVal == 0 || minVal > COLOR_DARK_LIMIT) {
+    return COLOR_UNKNOWN;  // timeout, black object, or too far away
+  }
 
-  Serial.print(F("Scan -> R:")); Serial.print(r);
-  Serial.print(F(" G:")); Serial.print(g);
-  Serial.print(F(" B:")); Serial.println(b);
+  if (r == minVal &&
+      (unsigned long)r * 100UL < (unsigned long)g * COLOR_MARGIN_PCT &&
+      (unsigned long)r * 100UL < (unsigned long)b * COLOR_MARGIN_PCT) {
+    return COLOR_RED;
+  }
 
-  if (r < g && r < b && r < 200) return COLOR_RED;
-  if (g < r && g < b && g < 250) return COLOR_GREEN;
-  if (b < r && b < g && b < 250) return COLOR_BLUE;
+  if (g == minVal &&
+      (unsigned long)g * 100UL < (unsigned long)r * COLOR_MARGIN_PCT &&
+      (unsigned long)g * 100UL < (unsigned long)b * COLOR_MARGIN_PCT) {
+    return COLOR_GREEN;
+  }
+
+  if (b == minVal &&
+      (unsigned long)b * 100UL < (unsigned long)r * COLOR_MARGIN_PCT &&
+      (unsigned long)b * 100UL < (unsigned long)g * COLOR_MARGIN_PCT) {
+    return COLOR_BLUE;
+  }
+
   return COLOR_UNKNOWN;
 }
 
+// ---------------- Setup ----------------
 void setup() {
   Serial.begin(115200);
+
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
-  pinMode(S0, OUTPUT); pinMode(S1, OUTPUT);
-  pinMode(S2, OUTPUT); pinMode(S3, OUTPUT);
-  pinMode(COLOR_OUT, INPUT);
 
-  digitalWrite(S0, HIGH);
-  digitalWrite(S1, LOW);
+  pinMode(TCS_S0, OUTPUT);
+  pinMode(TCS_S1, OUTPUT);
+  pinMode(TCS_S2, OUTPUT);
+  pinMode(TCS_S3, OUTPUT);
+  pinMode(TCS_OUT, INPUT);
+
+  // TCS3200 frequency scaling: 20% (S0=HIGH, S1=LOW)
+  digitalWrite(TCS_S0, HIGH);
+  digitalWrite(TCS_S1, LOW);
 
   pwm.begin();
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(50);
 
-  goUpright(GRIPPER_OPEN);
-  Serial.println(F("System Ready. Waiting for objects..."));
+  Serial.println(F("SAFE MODE - recovering to upright, 6s"));
+  setP(CH_ELBOW, 280);              delay(600);
+  setP(CH_ELBOW, HOME_ELBOW);       delay(600);
+  setP(CH_SHOULDER, HOME_SHOULDER); delay(600);
+  setP(CH_WRIST, HOME_WRIST);       delay(300);
+  setP(CH_BASE, HOME_BASE);         delay(600);
+  pwm.setPWM(CH_GRIPPER, 0, GRIPPER_OPEN); delay(6000);
+
+  Serial.println(F("System Ready. Place an object 2-10 cm from the ultrasonic sensor."));
 }
 
+// ---------------- Main FSM ----------------
 void loop() {
   switch (currentState) {
+
     case STATE_IDLE: {
-      float dist = readDistance();
-      if (dist > 2.0 && dist <= 10.0) {
+      float distance = readDistanceCM();
+
+      if (distance > OBJECT_MIN_CM && distance <= OBJECT_MAX_CM) {
         detectCount++;
         if (detectCount >= DETECT_DEBOUNCE) {
-          Serial.println(F("Object detected in zone! Initiating scan."));
-          delay(500);
+          Serial.print(F("Object detected at "));
+          Serial.print(distance);
+          Serial.println(F(" cm. Scanning colour..."));
           detectCount = 0;
+          colorRetries = 0;
           currentState = STATE_COLOR_SCAN;
         }
       } else {
         detectCount = 0;
       }
+
+      delay(60);
       break;
     }
 
     case STATE_COLOR_SCAN: {
       detectedColor = scanColor();
+
       if (detectedColor != COLOR_UNKNOWN) {
         const char* name = "UNKNOWN";
         if (detectedColor == COLOR_RED)   name = "RED";
         if (detectedColor == COLOR_GREEN) name = "GREEN";
         if (detectedColor == COLOR_BLUE)  name = "BLUE";
-        Serial.print(F("Object Recognized. Color: "));
+
+        Serial.print(F("Colour recognised: "));
         Serial.println(name);
         currentState = STATE_PICK;
       } else {
-        Serial.println(F("Color unrecognized, retrying..."));
-        delay(300);
+        colorRetries++;
+        Serial.print(F("Colour not recognised, attempt "));
+        Serial.println(colorRetries);
+
+        if (colorRetries >= COLOR_RETRIES) {
+          Serial.println(F("Giving up - returning to IDLE."));
+          currentState = STATE_IDLE;
+        } else {
+          delay(400);
+        }
       }
       break;
     }
 
     case STATE_PICK: {
-      Serial.println(F("Executing Pick..."));
-      setJoints(P_REACH_BASE, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
-      delay(700);
-      setJoints(P_REACH_BASE, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED);
-      delay(700);
-      goUpright(GRIPPER_CLOSED);           // lift upright (balanced)
+      Serial.println(F("PICK: reaching down (elbow only)..."));
+      pwm.setPWM(CH_GRIPPER, 0, GRIPPER_OPEN);
+      delay(300);
+      reachDown();
+
+      Serial.println(F("PICK: closing gripper..."));
+      pwm.setPWM(CH_GRIPPER, 0, GRIPPER_CLOSED);
+      delay(800);
+
+      Serial.println(F("PICK: lifting upright..."));
+      liftUpright(GRIPPER_CLOSED);
+
       currentState = STATE_PLACE;
       break;
     }
 
     case STATE_PLACE: {
-      Serial.println(F("Executing Place to Target Bin..."));
       int targetBase = BIN_GREEN;
       if (detectedColor == COLOR_RED)   targetBase = BIN_RED;
       if (detectedColor == COLOR_GREEN) targetBase = BIN_GREEN;
       if (detectedColor == COLOR_BLUE)  targetBase = BIN_BLUE;
 
-      rotateBaseSafe(targetBase, GRIPPER_CLOSED);   // rotate compact only
-      setJoints(targetBase, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED);
-      delay(700);
-      setJoints(targetBase, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
-      delay(700);
-      goUpright(GRIPPER_OPEN);
+      Serial.print(F("PLACE: rotating upright to base "));
+      Serial.println(targetBase);
+      rotateBaseSlow(targetBase, GRIPPER_CLOSED);
+
+      Serial.println(F("PLACE: reaching down over bin..."));
+      reachDown();
+
+      Serial.println(F("PLACE: releasing..."));
+      pwm.setPWM(CH_GRIPPER, 0, GRIPPER_OPEN);
+      delay(800);
+
+      Serial.println(F("PLACE: lifting upright..."));
+      liftUpright(GRIPPER_OPEN);
+
       currentState = STATE_RETURN_HOME;
       break;
     }
 
     case STATE_RETURN_HOME: {
-      Serial.println(F("Returning to Home Position..."));
-      rotateBaseSafe(P_HOME_BASE, GRIPPER_OPEN);
-      delay(800);
+      Serial.println(F("RETURN: rotating home..."));
+      rotateBaseSlow(HOME_BASE, GRIPPER_OPEN);
+      Serial.println(F("Cycle complete. Waiting for next object."));
       currentState = STATE_IDLE;
       break;
     }

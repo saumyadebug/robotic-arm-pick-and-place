@@ -9,10 +9,12 @@ graph TD
     B -->|PWM Ch 0| F[Base Servo - MG996R]
     B -->|PWM Ch 1| G[Shoulder Servo - MG996R]
     B -->|PWM Ch 2| H[Elbow Servo - MG996R]
-    B -->|PWM Ch 6| I[Wrist Servo - MG90S]
-    B -->|PWM Ch 4| J[Gripper - SG90]
+    B -->|PWM Ch 6| I[Wrist Pitch - MG90S]
+    B -->|PWM Ch 7| J[Gripper - SG90]
     A -->|Common GND| C
 ```
+
+> PCA9685 channel 3 is faulty and channel 4 (wrist rotation) is a dead servo; neither is used.
 
 ---
 

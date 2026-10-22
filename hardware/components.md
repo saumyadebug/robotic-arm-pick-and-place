@@ -10,10 +10,12 @@ This document provides a detailed list of all electrical, mechanical, and electr
 |------|-----------|---------------|----------|---------|
 | 1 | Microcontroller | Arduino Uno R3 / Mega 2560 | 1 | Master controller running motion & FSM logic |
 | 2 | Servo Driver Board | PCA9685 16-Channel 12-Bit PWM (I2C) | 1 | Generates accurate hardware PWM pulses for all servos |
-| 3 | Joint Servos | MG995 / MG996R Metal Gear (10-11 kg-cm torque) | 4-6 | High-torque joint actuators (Base, Shoulder, Elbow, Wrist) |
-| 4 | Micro Servos | SG90 / MG90S Micro Servo (optional for gripper/wrist) | 1-2 | Gripper opening/closing mechanism |
+| 3 | Joint Servos | MG995 / MG996R Metal Gear (10-11 kg-cm torque) | 3 | Base, shoulder, elbow |
+| 4 | Micro Servos | SG90 / MG90S Micro Servo | 2 | Wrist pitch + gripper |
 | 5 | Ultrasonic Sensor | HC-SR04 | 1 | Non-contact distance measurement for pick zone |
 | 6 | Color Sensor | TCS3200 / TCS230 | 1 | RGB color detection module |
+
+> Current build uses 4 active axes + gripper. The wrist-rotation servo is dead and the 6th DOF is deferred. PCA9685 channel 3 is faulty.
 
 ---
 

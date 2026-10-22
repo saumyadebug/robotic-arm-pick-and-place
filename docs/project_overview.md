@@ -5,7 +5,7 @@ The **Robotic Arm Pick and Place System** is an open-source, educational and ind
 ---
 
 ## Objectives
-- Implement a 4 to 6 DOF articulated robotic arm.
+- Implement a 4-DOF articulated robotic arm with a gripper (6-DOF frame; wrist roll deferred).
 - Integrate multi-sensor feedback (ultrasonic distance + optical RGB color sensing).
 - Utilize I2C hardware PWM driver (PCA9685) to achieve jitter-free servo motion.
 - Develop an autonomous finite-state machine (FSM) control loop.

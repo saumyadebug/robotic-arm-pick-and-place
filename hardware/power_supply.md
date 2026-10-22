@@ -31,3 +31,15 @@ Proper power distribution is the single most critical factor for reliable roboti
    - **7.4V 2500mAh 2S Battery**: Provides sufficient discharge capacity for servo transient loads.
    - **XL4016 DC-DC Step-Down Buck Converter**: Essential to step down 7.4V to 5V–6V regulated output for the PCA9685 V+ rail (per project report). Do not feed 7.4V directly to standard 5V-6V rated servos as it will burn their internal control circuits.
    - **Common Ground**: Ensure the Buck Converter negative output is tied to Arduino GND.
+
+5. **Sensor Power**:
+   - Power the HC-SR04 and TCS3200 from the Arduino **5V** pin (they draw only tens of mA).
+   - Do **not** power the servos from the Arduino 5V pin.
+   - All sensor grounds must return to the same Arduino GND.
+
+## Current wiring notes
+
+- Working servo channels: base 0, shoulder 1, elbow 2, wrist pitch 6, gripper 7.
+- PCA9685 channel 3 is faulty — leave it disconnected.
+- Wrist-rotation channel 4 has a dead servo — leave it disconnected.
+- The arm's shoulder is the highest-load joint; keep it near vertical (260) to avoid stall and brownout.
