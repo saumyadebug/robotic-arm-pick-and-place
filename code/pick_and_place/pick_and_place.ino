@@ -92,8 +92,9 @@ void reachDown() {
 }
 
 // Upright first, then rotate. Small, slow base move.
-void rotateBaseSlow(int target) {
-  liftUpright(GRIPPER_CLOSED);
+// The gripper state is passed in so it is not forced closed at home.
+void rotateBaseSlow(int target, int grip) {
+  liftUpright(grip);
   setP(CH_BASE, target);
   delay(1000);
 }
@@ -124,7 +125,7 @@ void loop() {
   liftUpright(GRIPPER_CLOSED);
 
   Serial.println(F("4. Rotate base to RED bin (upright)"));
-  rotateBaseSlow(BIN_RED);
+  rotateBaseSlow(BIN_RED, GRIPPER_CLOSED);
 
   Serial.println(F("5. Reach down over bin"));
   reachDown();
@@ -136,7 +137,7 @@ void loop() {
   liftUpright(GRIPPER_OPEN);
 
   Serial.println(F("8. Rotate home"));
-  rotateBaseSlow(HOME_BASE);
+  rotateBaseSlow(HOME_BASE, GRIPPER_OPEN);
 
   Serial.println(F("Cycle done - pause 3s"));
   delay(3000);
