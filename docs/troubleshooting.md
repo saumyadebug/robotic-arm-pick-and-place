@@ -13,6 +13,7 @@
 | Wrist rotation never moves | dead servo (confirmed on bare shaft) | replace the servo; do not chase it in software |
 | Gripper hums continuously | over-gripping / command beyond 200 | use open 120 / closed 200 only |
 | Ultrasonic returns 999 cm | wiring or target out of range | check TRIG=D9, ECHO=D10, 5V, GND; object must be 2–10 cm away |
+| Ultrasonic always prints "Sensor timeout / out of range" | no echo pulse reached D10 | verify sensor pin labels (VCC/TRIG/ECHO/GND), 5V at the sensor, common ground, and jumper continuity; run `code/ultrasonic_diagnostic/` |
 | Ultrasonic triggers randomly | reflections, loose wire, soft target | require 3 consecutive readings (firmware does this); secure wiring; use a flat target |
 | Color sensor reads all colors as UNKNOWN | object too far, too dark, or OE not grounded | place object 1.5–3.0 cm away; ground OE; raise `DARK_LIMIT` |
 | Color sensor mixes red/green/blue | ambient light or wrong filter sequence | shade the sensor; verify S2/S3 truth table; lower `MARGIN_PCT` |
