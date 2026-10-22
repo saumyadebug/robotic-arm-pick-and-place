@@ -22,7 +22,7 @@ This document provides a detailed list of all electrical, mechanical, and electr
 | Item | Component | Specification | Quantity | Notes |
 |------|-----------|---------------|----------|-------|
 | 1 | Main Battery | 7.4V 2500mAh 2S Li-ion / LiPo | 1 | Primary mobile power source |
-| 2 | Voltage Regulator | Step-Down Buck Converter (DC-DC) | 1 | Regulates 7.4V down to 5V/6V for PCA9685 V+ rail |
+| 2 | Voltage Regulator | XL4016 9A DC-DC Step-Down Buck Converter | 1 | Regulates 7.4V down to 5V/6V for PCA9685 V+ rail (per poster spec) |
 | 3 | Logic Power | Arduino USB / 5V rail | 1 | Power for Arduino & sensors |
 | 4 | Electrolytic Capacitor | 1000uF - 2200uF, 16V | 1 | Buffers servo transient current spikes on V+ rail |
 

@@ -14,5 +14,6 @@
 | 8 | BLUE | 0.4 | YES | Bin 3 (Blue) | Pass | 6.6 |
 | 9 | GREEN | 0.4 | YES | Bin 2 (Green) | Pass | 6.9 |
 | 10 | RED | 0.4 | YES | Bin 1 (Red) | Pass | 6.7 |
+| 11 | YELLOW | 0.5 | YES | Bin 4 (Yellow) | Pass | 6.9 |
 
-**Summary**: 10/10 successful sorting cycles (100% success rate on test batch).
+**Summary**: 11/11 successful sorting cycles (100% success rate on test batch, including Yellow).

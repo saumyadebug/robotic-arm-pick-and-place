@@ -6,4 +6,5 @@
 | Ch 1 | Shoulder | MG996R | 180 | 580 | 380 | 780 | PASS |
 | Ch 2 | Elbow | MG996R | 160 | 590 | 375 | 650 | PASS |
 | Ch 3 | Wrist Pitch | SG90 | 150 | 600 | 375 | 220 | PASS |
-| Ch 4 | Gripper | SG90 | 200 (Open) | 450 (Grip) | N/A | 290 | PASS |
+| Ch 4 | Gripper | SG90/MG995 | 200 (Open) | 450 (Grip) | N/A | 290 | PASS |
+| Ch 5 | Wrist Roll | MG995 | 150 | 600 | 375 | 540 | PASS |

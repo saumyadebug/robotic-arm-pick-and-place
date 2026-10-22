@@ -27,7 +27,7 @@ Comprehensive pin connection table for Arduino Uno, PCA9685 PWM driver, and exte
 | Channel 2 | Elbow | MG996R | 160 | 590 | 375 |
 | Channel 3 | Wrist Pitch | SG90 / MG90S | 150 | 600 | 375 |
 | Channel 4 | End Effector (Gripper)| SG90 / MG90S | 200 (Open) | 450 (Grip) | N/A |
-| Channel 5 | Spare / Wrist Roll | Optional | - | - | - |
+| Channel 5 | Wrist Roll | MG995 | 150 | 600 | 375 |
 
 ---
 

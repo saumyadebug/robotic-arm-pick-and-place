@@ -27,7 +27,7 @@ This robotics and embedded systems project focuses on robotic joint control, mul
 ---
 
 ## Project Status
-**In Progress** — Hardware assembly, servo testing, and basic pick-and-place movements are completed. Sensor integration and autonomous color-based sorting workflow are currently being refined.
+**Completed (v1.1)** — Hardware assembly, servo testing, and pick-and-place movements are completed. Autonomous color-based sorting now supports four colors (Red, Green, Blue, Yellow) across six servo joints; firmware and documentation updated to match the project report requirements.
 
 ---
 
@@ -37,9 +37,9 @@ This robotics and embedded systems project focuses on robotic joint control, mul
 - [x] End effector gripper mechanism tested for grasp force and compliance.
 - [x] Arduino and PCA9685 16-channel PWM servo driver integrated over I2C.
 - [x] Regulated power supply configured using a 7.4V battery and step-down buck converter.
-- [x] Basic pick-and-place kinematic motion tested.
+- [x] Basic pick-and-place kinematic motion tested (6-DOF).
 - [x] HC-SR04 ultrasonic sensor tested for pick-zone proximity triggering.
-- [🔄] TCS3200 color sensor connected; sensor calibration and automated sorting logic in progress.
+- [x] TCS3200 color sensor integrated; autonomous sorting for Red/Green/Blue/Yellow completed.
 
 ---
 
@@ -51,7 +51,7 @@ This robotics and embedded systems project focuses on robotic joint control, mul
 - **Ultrasonic Distance Sensor**: HC-SR04 for non-contact object detection.
 - **Color Sensor**: TCS3200 / TCS230 RGB light-to-frequency converter.
 - **Power Source**: 7.4V, 2500mAh Li-ion/LiPo battery pack.
-- **Voltage Regulator**: High-efficiency DC-DC Buck Converter (stepping down 7.4V to 5V/6V for servo rail).
+- **Voltage Regulator**: XL4016 9A DC-DC Buck Converter (stepping down 7.4V to 5V/6V for servo rail).
 - **End Effector**: 2-Finger parallel mechanical gripper.
 - **Accessories**: 1000–2200 µF electrolytic buffer capacitor, breadboard/mounting plates, jumper wires.
 

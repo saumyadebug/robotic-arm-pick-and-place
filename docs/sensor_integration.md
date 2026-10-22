@@ -1,6 +1,7 @@
 # Sensor Integration
 
 ## TCS3200 Color Sensor Integration
+- **Mounting**: Sensor is gripper-mounted (per project report) to scan objects at a fixed 1.5-3.0 cm distance during pick.
 - **Shielding**: Ambient room lighting variations can corrupt RGB frequency readings. Enclosing the sensor and target staging area in an opaque shroud improves classification accuracy.
 - **White Balance**: Calibrate readings using a pure white card and a pure black surface prior to running sorting routines.
 

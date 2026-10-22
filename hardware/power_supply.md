@@ -29,5 +29,5 @@ Proper power distribution is the single most critical factor for reliable roboti
 
 4. **Battery & Buck Converter Setup**:
    - **7.4V 2500mAh 2S Battery**: Provides sufficient discharge capacity for servo transient loads.
-   - **DC-DC Step-Down Buck Converter**: Essential to step down 7.4V to 5V–6V regulated output for the PCA9685 V+ rail. Do not feed 7.4V directly to standard 5V-6V rated servos as it will burn their internal control circuits.
+   - **XL4016 DC-DC Step-Down Buck Converter**: Essential to step down 7.4V to 5V–6V regulated output for the PCA9685 V+ rail (per project report). Do not feed 7.4V directly to standard 5V-6V rated servos as it will burn their internal control circuits.
    - **Common Ground**: Ensure the Buck Converter negative output is tied to Arduino GND.

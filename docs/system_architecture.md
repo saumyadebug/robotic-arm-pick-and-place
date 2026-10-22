@@ -6,11 +6,12 @@ graph TD
     C[Arduino Uno] -->|I2C SDA / SCL| B
     C -->|Trigger / Echo| D[HC-SR04 Ultrasonic Sensor]
     C -->|S0-S3 / Frequency| E[TCS3200 Color Sensor]
-    B -->|PWM Ch 0| F[Base Servo - MG996R]
-    B -->|PWM Ch 1| G[Shoulder Servo - MG996R]
-    B -->|PWM Ch 2| H[Elbow Servo - MG996R]
-    B -->|PWM Ch 3| I[Wrist Servo - MG90S]
-    B -->|PWM Ch 4| J[Gripper - SG90]
+    B -->|PWM Ch 0| F[Base Servo - MG995]
+    B -->|PWM Ch 1| G[Shoulder Servo - MG995]
+    B -->|PWM Ch 2| H[Elbow Servo - MG995]
+    B -->|PWM Ch 3| I[Wrist Pitch - MG995]
+    B -->|PWM Ch 4| J[Gripper - MG995]
+    B -->|PWM Ch 5| K[Wrist Roll - MG995]
     A -->|Common GND| C
 ```
 

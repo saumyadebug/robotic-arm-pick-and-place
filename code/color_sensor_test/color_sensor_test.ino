@@ -53,11 +53,17 @@ void loop() {
   Serial.print(F(" | C: ")); Serial.print(clearFreq);
 
   // Note: For TCS3200, LOWER pulse duration means HIGHER intensity
-  if (redFreq < greenFreq && redFreq < blueFreq && redFreq < 200) {
+  bool rStrong = (redFreq < 200);
+  bool gStrong = (greenFreq < 200);
+  bool bStrong = (blueFreq < 200);
+
+  if (rStrong && gStrong && !bStrong) {
+    Serial.println(F(" => Detected: YELLOW"));
+  } else if (rStrong && !gStrong && !bStrong) {
     Serial.println(F(" => Detected: RED"));
-  } else if (greenFreq < redFreq && greenFreq < blueFreq && greenFreq < 250) {
+  } else if (gStrong && !rStrong && !bStrong) {
     Serial.println(F(" => Detected: GREEN"));
-  } else if (blueFreq < redFreq && blueFreq < greenFreq && blueFreq < 250) {
+  } else if (bStrong && !rStrong && !gStrong) {
     Serial.println(F(" => Detected: BLUE"));
   } else {
     Serial.println(F(" => Detected: UNKNOWN / NONE"));
