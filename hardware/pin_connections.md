@@ -22,12 +22,13 @@ Comprehensive pin connection table for Arduino Uno, PCA9685 PWM driver, and exte
 
 | Channel | Joint Name | Servo Type | Min Pulse (0°) | Max Pulse (180°) | Center (90°) |
 |---------|------------|------------|----------------|------------------|--------------|
-| Channel 0 | Base (Waist) | MG996R | 150 | 600 | 375 |
-| Channel 1 | Shoulder | MG996R | 180 | 580 | 380 |
-| Channel 2 | Elbow | MG996R | 160 | 590 | 375 |
-| Channel 3 | Wrist Pitch | SG90 / MG90S | 150 | 600 | 375 |
-| Channel 4 | End Effector (Gripper)| SG90 / MG90S | 200 (Open) | 450 (Grip) | N/A |
+| Channel 0 | Base (Waist) | MG996R | 200 | 500 | 375 |
+| Channel 1 | Shoulder | MG996R | 200 | 340 | 260 |
+| Channel 2 | Elbow | MG996R | 200 | 420 | 300 |
+| Channel 3 | **Faulty / Spare** | — | — | — | — |
+| Channel 4 | End Effector (Gripper)| SG90 / MG90S | 220 (Open) | 420 (Grip) | N/A |
 | Channel 5 | Spare / Wrist Roll | Optional | - | - | - |
+| Channel 6 | Wrist Pitch | SG90 / MG90S | 150 | 600 | 375 (to calibrate) |
 
 ---
 

@@ -9,7 +9,7 @@ graph TD
     B -->|PWM Ch 0| F[Base Servo - MG996R]
     B -->|PWM Ch 1| G[Shoulder Servo - MG996R]
     B -->|PWM Ch 2| H[Elbow Servo - MG996R]
-    B -->|PWM Ch 3| I[Wrist Servo - MG90S]
+    B -->|PWM Ch 6| I[Wrist Servo - MG90S]
     B -->|PWM Ch 4| J[Gripper - SG90]
     A -->|Common GND| C
 ```

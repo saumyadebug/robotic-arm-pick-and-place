@@ -34,7 +34,7 @@ void loop() {
     int channel = Serial.parseInt();
     int pulse = Serial.parseInt();
 
-    if (channel >= 0 && channel <= 15 && pulse >= 100 && pulse <= 650) {
+    if (channel >= 0 && channel <= 15 && pulse >= 50 && pulse <= 650) {
       Serial.print(F("Moving Channel "));
       Serial.print(channel);
       Serial.print(F(" -> Pulse: "));
@@ -42,7 +42,7 @@ void loop() {
 
       pwm.setPWM(channel, 1, pulse);
     } else {
-      Serial.println(F("Invalid input! Ensure channel 0-15 and pulse 100-650."));
+      Serial.println(F("Invalid input! Ensure channel 0-15 and pulse 50-650."));
     }
 
     // Flush any remaining characters in the buffer

@@ -2,13 +2,22 @@
  * Integrated Color Sorting Pick and Place System
  * Robotic Arm Pick and Place Project
  *
- * Description:
- * Complete autonomous finite-state machine (FSM):
- * 1. STATE_IDLE: Wait for object detection via ultrasonic sensor (debounced).
- * 2. STATE_COLOR_SCAN: Read TCS3200 color sensor and classify item (R/G/B).
- * 3. STATE_PICK: Navigate arm to pick zone, grip object, and lift.
- * 4. STATE_PLACE: Route arm to assigned color bin (Red, Green, Blue) and drop.
- * 5. STATE_RETURN_HOME: Reset arm to standby position.
+ * Channel mapping (calibrated):
+ *   CH_BASE      0   range 200-500, center 375
+ *   CH_SHOULDER  1   range 200-340, center 260 (vertical)
+ *   CH_ELBOW     2   range 200-420, center 300 (vertical)
+ *   CH_WRIST     6   held at 375 (neutral)
+ *   CH_GRIPPER   7   open 120, closed 200
+ *
+ * FSM:
+ * 1. STATE_IDLE      : debounced ultrasonic object detection
+ * 2. STATE_COLOR_SCAN: TCS3200 classification (Red / Green / Blue)
+ * 3. STATE_PICK      : reach, grip, lift upright
+ * 4. STATE_PLACE     : fold upright -> rotate base to bin -> lower -> release
+ * 5. STATE_RETURN_HOME
+ *
+ * Safety: base only rotates while the arm is folded upright so the heavy
+ * metal arm's center of mass stays over the base (prevents tipping).
  */
 
 #include <Wire.h>
@@ -29,21 +38,35 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40);
 #define CH_BASE       0
 #define CH_SHOULDER   1
 #define CH_ELBOW      2
-#define CH_WRIST      3
-#define CH_GRIPPER    4
+#define CH_WRIST      6
+#define CH_GRIPPER    7
 
-// Per-joint safe pulse limits (from calibration)
-#define BASE_MIN      150
-#define BASE_MAX      600
+// Per-joint safe pulse limits (calibrated)
+#define BASE_MIN      200
+#define BASE_MAX      500
 #define SHOULDER_MIN  200
 #define SHOULDER_MAX  340
-#define ELBOW_MIN     160
-#define ELBOW_MAX     590
-#define WRIST_MIN     150
-#define WRIST_MAX     600
+#define ELBOW_MIN     200
+#define ELBOW_MAX     420
+#define WRIST_MIN     300
+#define WRIST_MAX     450
 
-#define GRIPPER_OPEN   220
-#define GRIPPER_GRIP   410
+#define GRIPPER_OPEN   120
+#define GRIPPER_CLOSED 200
+
+// Poses
+#define P_HOME_BASE      375
+#define P_HOME_SHOULDER  260
+#define P_HOME_ELBOW     300
+#define P_HOME_WRIST     375
+
+#define P_REACH_BASE     300
+#define P_REACH_SHOULDER 310
+#define P_REACH_ELBOW    250
+
+#define BIN_RED          250
+#define BIN_GREEN        375
+#define BIN_BLUE         475
 
 enum SystemState {
   STATE_IDLE,
@@ -75,15 +98,22 @@ int clampPulse(int ch, int pulse) {
 }
 
 void setJoints(int b, int s, int e, int w, int g) {
-  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, b));
-  delay(5);
-  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, s));
-  delay(5);
-  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, e));
-  delay(5);
-  pwm.setPWM(CH_WRIST, 0, clampPulse(CH_WRIST, w));
-  delay(5);
-  pwm.setPWM(CH_GRIPPER, 0, g);
+  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, b));     delay(15);
+  pwm.setPWM(CH_SHOULDER, 0, clampPulse(CH_SHOULDER, s)); delay(15);
+  pwm.setPWM(CH_ELBOW, 0, clampPulse(CH_ELBOW, e));   delay(15);
+  pwm.setPWM(CH_WRIST, 0, clampPulse(CH_WRIST, w));   delay(15);
+  pwm.setPWM(CH_GRIPPER, 0, g);                       delay(120);
+}
+
+void goUpright(int grip) {
+  setJoints(P_HOME_BASE, P_HOME_SHOULDER, P_HOME_ELBOW, P_HOME_WRIST, grip);
+  delay(600);
+}
+
+void rotateBaseSafe(int targetBase, int grip) {
+  goUpright(grip);                    // fold upright first
+  pwm.setPWM(CH_BASE, 0, clampPulse(CH_BASE, targetBase));
+  delay(900);                         // rotate while balanced
 }
 
 float readDistance() {
@@ -134,7 +164,7 @@ void setup() {
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(50);
 
-  setJoints(375, 260, 350, 300, GRIPPER_OPEN);
+  goUpright(GRIPPER_OPEN);
   Serial.println(F("System Ready. Waiting for objects..."));
 }
 
@@ -175,37 +205,36 @@ void loop() {
 
     case STATE_PICK: {
       Serial.println(F("Executing Pick..."));
-      setJoints(300, 320, 280, 250, GRIPPER_OPEN);
-      delay(1000);
-      setJoints(300, 320, 280, 250, GRIPPER_GRIP);
-      delay(800);
-      setJoints(300, 320, 350, 300, GRIPPER_GRIP);
-      delay(800);
+      setJoints(P_REACH_BASE, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
+      delay(700);
+      setJoints(P_REACH_BASE, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED);
+      delay(700);
+      goUpright(GRIPPER_CLOSED);           // lift upright (balanced)
       currentState = STATE_PLACE;
       break;
     }
 
     case STATE_PLACE: {
       Serial.println(F("Executing Place to Target Bin..."));
-      int targetBase = 375;
-      if (detectedColor == COLOR_RED)   targetBase = 200;
-      if (detectedColor == COLOR_GREEN) targetBase = 375;
-      if (detectedColor == COLOR_BLUE)  targetBase = 550;
+      int targetBase = BIN_GREEN;
+      if (detectedColor == COLOR_RED)   targetBase = BIN_RED;
+      if (detectedColor == COLOR_GREEN) targetBase = BIN_GREEN;
+      if (detectedColor == COLOR_BLUE)  targetBase = BIN_BLUE;
 
-      setJoints(targetBase, 320, 350, 300, GRIPPER_GRIP);
-      delay(1000);
-      setJoints(targetBase, 320, 280, 250, GRIPPER_GRIP);
-      delay(800);
-      setJoints(targetBase, 320, 280, 250, GRIPPER_OPEN);
-      delay(800);
+      rotateBaseSafe(targetBase, GRIPPER_CLOSED);   // rotate compact only
+      setJoints(targetBase, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_CLOSED);
+      delay(700);
+      setJoints(targetBase, P_REACH_SHOULDER, P_REACH_ELBOW, P_HOME_WRIST, GRIPPER_OPEN);
+      delay(700);
+      goUpright(GRIPPER_OPEN);
       currentState = STATE_RETURN_HOME;
       break;
     }
 
     case STATE_RETURN_HOME: {
       Serial.println(F("Returning to Home Position..."));
-      setJoints(375, 260, 350, 300, GRIPPER_OPEN);
-      delay(1500);
+      rotateBaseSafe(P_HOME_BASE, GRIPPER_OPEN);
+      delay(800);
       currentState = STATE_IDLE;
       break;
     }
