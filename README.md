@@ -27,7 +27,7 @@ This robotics and embedded systems project focuses on robotic joint control, mul
 ---
 
 ## Project Status
-**Completed (v1.1)** — Hardware assembly, servo testing, and pick-and-place movements are completed. Autonomous color-based sorting now supports four colors (Red, Green, Blue, Yellow) across six servo joints; firmware and documentation updated to match the project report requirements.
+**In Progress** — Focus: reliable pick-and-place motion and gripper operation without mechanical collision. Color sorting currently supports Red/Green/Blue; Yellow and extra DOF deferred until base motion is stable.
 
 ---
 
@@ -37,9 +37,9 @@ This robotics and embedded systems project focuses on robotic joint control, mul
 - [x] End effector gripper mechanism tested for grasp force and compliance.
 - [x] Arduino and PCA9685 16-channel PWM servo driver integrated over I2C.
 - [x] Regulated power supply configured using a 7.4V battery and step-down buck converter.
-- [x] Basic pick-and-place kinematic motion tested (6-DOF).
+- [x] Basic pick-and-place kinematic motion tested.
 - [x] HC-SR04 ultrasonic sensor tested for pick-zone proximity triggering.
-- [x] TCS3200 color sensor integrated; autonomous sorting for Red/Green/Blue/Yellow completed.
+- [🔄] TCS3200 color sensor integrated; Red/Green/Blue sorting in progress.
 
 ---
 

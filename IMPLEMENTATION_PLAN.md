@@ -1,133 +1,128 @@
-# Implementation Plan — 6-DOF Robotic Arm Pick-and-Place & Color Sorting
+# Implementation Plan — Robotic Arm Pick-and-Place (Stabilization Focus)
 
-**Project:** Automatic Color-Based Object Sorting Using a 6-DOF Robotic Arm
+**Project:** 6-DOF Robotic Arm Pick-and-Place and Color Sorting (current iteration: 4-DOF pick-and-place)
 **Repository:** https://github.com/saumyadebug/robotic-arm-pick-and-place
 **Report (poster):** `24BRS1075_24BRS1065_24BRS1126_Poster_A3 (7).pdf`
-**Version:** 1.1 (aligned with project report requirements)
+**Version:** 1.2 (pick-and-place stabilization)
 **Date:** 2026-10-22
 
 ---
 
 ## 1. Purpose
 
-This plan documents the work required to bring the repository into alignment with the
-project report requirements and to record what has been implemented, changed, added,
-and removed. The report specifies:
-
-- A **6-DOF robotic arm** actuated by **six MG995 servo motors**.
-- Control via **Arduino Uno** + **PCA9685 16-channel 12-bit PWM driver** (I2C).
-- Power via a **7.4 V battery** stepped down by an **XL4016 buck converter**.
-- A **gripper-mounted TCS3200 color sensor** classifying objects into
-  **four color-coded bins: Red, Green, Blue, Yellow**.
-- An **HC-SR04 ultrasonic sensor** for pick-zone detection.
-- An autonomous **Finite State Machine (FSM)** control loop.
+The project report defines the full target system (6-DOF, six MG995 servos, 4 color bins).
+For this iteration the priority is narrower and explicit: **make the arm move reliably across all
+joints, make the gripper work properly, prevent mechanical collision/collapse, and complete a
+stable pick-and-place cycle.** Yellow color sorting and the extra (6th) DOF are deferred until
+base motion is stable.
 
 ---
 
-## 2. Gap Analysis (Before)
+## 2. Current Focus & Deferred Items
 
-| Requirement (Report) | Repository State (Before) | Gap |
-|---|---|---|
-| 6-DOF / 6 MG995 servos | Code used 5 channels (0-4); 6th channel unused | Missing 6th joint (wrist roll) |
-| 4 color bins (R/G/B/Y) | FSM classified only R/G/B; 3 bins | Missing Yellow detection & 4th bin |
-| XL4016 buck converter | Generic buck converter documented | Naming/spec mismatch |
-| Gripper-mounted color sensor | TCS3200 documented, not specified as gripper-mounted | Doc gap |
-| Debounced ultrasonic trigger | No debounce in FSM | Robustness gap |
-| Oscillator frequency consistency | Inconsistent across sketches | Reliability gap |
-| Servo channel 5 in BOM/pinout | Marked "spare/optional" | Doc gap |
-| Yellow in color test results | Test log already included Yellow, code did not | Code/test mismatch |
+### In scope now
+- Reliable 4-DOF motion (base, shoulder, elbow, wrist) + gripper.
+- Safe, sequential joint motion with per-joint pulse clamping to avoid over-travel.
+- Stable grip open/close without servo stalling.
+- Complete pick-and-place cycle (approach, grasp, lift, transport, release, home).
+- Debounced ultrasonic triggering and R/G/B color sorting.
+
+### Deferred (not in this iteration)
+- Yellow color detection and 4th bin.
+- 6th DOF (wrist roll) servo integration.
+- Inverse kinematics and smooth trajectory profiles.
 
 ---
 
 ## 3. Implementation Phases
 
-### Phase 1 — Firmware Core (6-DOF + 4-Color FSM)
-- [x] Add 6th servo channel `CH_WRIST_ROLL` (channel 5) to all sketches.
-- [x] Extend `setJoints()` to actuate 6 joints + gripper.
-- [x] Add `COLOR_YELLOW` and 4th bin target (base tick 590).
-- [x] Implement Yellow classification in `scanColor()` and `color_sensor_test`.
-- [x] Standardize PCA9685 init (`setOscillatorFrequency(27000000)` + `setPWMFreq(50)`).
-- [x] Add 3-reading debounce in `STATE_IDLE`.
-- [x] Align ultrasonic detection threshold to 10 cm (debounced).
-- [x] Add filter-settling delays in `scanColor()`.
+### Phase 1 — Motion Stabilization (current)
+- [x] Add per-joint safe pulse limits and clamping in `pick_and_place` and `integrated_sorting`.
+- [x] Replace simultaneous joint updates with sequential updates (`moveArmSafe`) to reduce load/collision.
+- [x] Standardize PCA9685 init across sketches.
+- [x] Add ultrasonic debounce (3 consecutive readings).
+- [x] Keep R/G/B color sorting (Yellow deferred).
 
-### Phase 2 — Hardware Documentation Alignment
-- [x] Update BOM voltage regulator to XL4016.
-- [x] Update power supply guide to XL4016.
-- [x] Update system architecture diagram to 6 MG995 joints.
-- [x] Update pin connection table channel 5 (Wrist Roll, MG995).
-- [x] Mark color sensor as gripper-mounted in sensor integration doc.
-- [x] Update development log to 6-DOF.
+### Phase 2 — Gripper Reliability
+- [x] Define gripper open/close pulses (220/420) with margin to avoid stall.
+- [ ] Test grip on soft/rigid objects; adjust pulses per hardware.
+- [ ] Add current-limit awareness (do not command beyond stall).
 
-### Phase 3 — Test Records & Status
-- [x] Add wrist roll row to servo test results.
-- [x] Add Yellow cycle to pick-and-place test results.
-- [x] Update README project status and progress checkboxes.
+### Phase 3 — Hardware Bring-up (user actions)
+- [ ] Calibrate each joint with `joint_calibration` and update limits in code.
+- [ ] Verify power supply (XL4016 set to 5-6 V, ≥6 A peak, common ground, 2200 µF cap).
+- [ ] Secure all horns/screws; check for physical interference before powered motion.
+- [ ] Run `servo_testing` on each channel individually before integrated motion.
 
-### Phase 4 — Planning & Reporting Artifacts
-- [x] Create this implementation plan (`IMPLEMENTATION_PLAN.md`).
-- [x] Generate change-report PDF (`docs/change_report.pdf`).
-- [ ] (Optional) Add CI/compile check via Arduino CLI.
-- [ ] (Optional) Add unit tests for color classification logic.
+### Phase 4 — Validation
+- [ ] Dry run (no payload) x10 cycles without collision.
+- [ ] Loaded run (≤180 g) x10 cycles.
+- [ ] Document results in `tests/pick_and_place_test_results.md`.
 
-### Phase 5 — Future Improvements (Backlog)
-- [ ] Implement true trapezoidal/S-curve interpolation in `moveArmSmooth`.
-- [ ] Implement inverse kinematics for Cartesian positioning.
-- [ ] Add automated conveyor belt feed.
-- [ ] Add performance benchmark graphs and demo videos.
-- [ ] Ambient light shielding & white-balance calibration routine.
+### Phase 5 — Future (backlog)
+- [ ] Add Yellow sorting and 4th bin.
+- [ ] Add 6th DOF (wrist roll).
+- [ ] Implement trapezoidal/S-curve interpolation.
+- [ ] Develop inverse kinematics.
 
 ---
 
-## 4. Change Summary
+## 4. Change Summary (this iteration)
 
 ### 4.1 Added
-- `CH_WRIST_ROLL` / `CH_WRIST_PITCH` channel definitions (6-DOF).
-- `COLOR_YELLOW` enum value and 4th bin (base tick 590).
-- Yellow classification logic in `scanColor()` and `color_sensor_test`.
-- Ultrasonic debounce counter (`DETECT_DEBOUNCE = 3`).
-- Implementation plan document.
-- Change-report PDF.
+- Per-joint safe pulse limits and `clampPulse()` in firmware.
+- Sequential joint motion (`moveArmSafe`) to reduce simultaneous load.
+- Ultrasonic debounce (3 readings).
+- Hardware bring-up checklist (Section 3, Phase 3).
 
 ### 4.2 Changed
-- `setJoints()` signature: now 6 joints + gripper.
-- Ultrasonic threshold: `dist <= 10.0 cm` (was `<= 8.0`).
-- PCA9685 init standardized across all sketches.
-- Servo model references: MG995 (per report) instead of MG996R/MG90S mix in architecture doc.
-- Voltage regulator: XL4016.
-- README status: Completed (v1.1).
-- Sensor integration: gripper-mounted note.
-- Color test logic: Yellow takes priority when R & G strong and B weak.
+- `pick_and_place.ino`: sequential motion, clamped pulses, standardized init.
+- `integrated_sorting.ino`: clamped pulses, debounce, standardized init; R/G/B only.
+- `color_sensor_test.ino`: reverted to R/G/B classification.
+- README status: In Progress (pick-and-place stabilization).
+- Docs/tests reverted to 4-DOF R/G/B baseline where previously extended.
 
-### 4.3 Removed
-- None (no files deleted). Unused `USMIN`/`USMAX` constants retained for reference.
+### 4.3 Removed (reverted from prior iteration)
+- Wrist roll (6th DOF) channel support.
+- Yellow color detection and 4th bin.
+- Corresponding test rows (channel 5, Yellow cycle).
 
 ---
 
-## 5. Risk & Mitigation
+## 5. Hardware Actions Required (user)
+
+1. **Power:** Set XL4016 output to 5.0-6.0 V; ensure ≥6 A peak capability; tie buck GND to Arduino GND; install 2200 µF cap across PCA9685 V+/GND.
+2. **Mechanical:** Tighten servo horns and link screws; verify no link hits another during full range; add mechanical stops if needed.
+3. **Calibration:** Run `joint_calibration` per joint; record min/max in `tests/servo_test_results.md` and update limits in code.
+4. **Gripper:** Test open/close on actual objects; adjust `GRIPPER_OPEN`/`GRIPPER_CLOSED` to avoid stall.
+5. **Bring-up order:** `servo_testing` (each channel) → `end_effector_test` → `pick_and_place` (no payload) → loaded test.
+
+---
+
+## 6. Risk & Mitigation
 
 | Risk | Mitigation |
 |---|---|
-| No Arduino CLI available to compile | Manual syntax review; keep changes minimal and consistent |
-| Yellow misclassification under ambient light | Add shielding & white-balance routine (Phase 5) |
-| 6th servo mechanical interference | Calibrate via `joint_calibration` before full runs |
-| Base servo range (150-600) for 4 bins | Bin targets spaced: 200/375/550/590 |
+| Servo overload / brownout | Sequential motion, adequate PSU, common ground, capacitor |
+| Mechanical collision | Per-joint limits, calibration, physical stops |
+| Gripper stall | Pulse margin, current monitoring, adjust grip |
+| Misclassification (R/G/B) | Ambient shielding, white balance |
 
 ---
 
-## 6. Acceptance Criteria
+## 7. Acceptance Criteria
 
-- [x] All sketches compile-conceptually consistent (standardized init, channel defs).
-- [x] FSM supports 4 colors and 6 joints.
-- [x] Documentation matches report (6 MG995, XL4016, gripper-mounted sensor, 4 bins).
-- [x] Test records include 6 channels and Yellow.
-- [x] Implementation plan and change-report PDF delivered.
+- [ ] All 4 joints move within calibrated limits without collision.
+- [ ] Gripper opens/closes reliably on test objects.
+- [ ] 10 consecutive no-payload pick-and-place cycles pass.
+- [ ] 10 loaded cycles (≤180 g) pass.
+- [ ] Results documented.
 
 ---
 
-## 7. Deliverables
+## 8. Deliverables
 
-1. Updated repository (firmware + docs + tests).
-2. `IMPLEMENTATION_PLAN.md` (this file).
-3. `docs/change_report.pdf` (change demonstration).
-4. Git commit + push to `origin/main`.
+1. Updated firmware and docs.
+2. `IMPLEMENTATION_PLAN.md`.
+3. `docs/change_report.pdf`.
+4. Git commit and push.

@@ -1,7 +1,7 @@
 # Development Log
 
 ### Phase 1: Mechanical Assembly & Electrical Bring-up
-- Assembled 6-DOF robotic arm mechanical frame with six MG995 joint servos and a gripper servo.
+- Assembled 4-DOF robotic arm mechanical frame with MG996R and SG90 servos.
 - Fabricated power distribution bus; wired PCA9685 I2C driver board to Arduino Uno.
 
 ### Phase 2: Sensor Interfacing & Calibration
