@@ -81,9 +81,11 @@ const float OBJECT_MAX_CM = 10.0;
 const uint8_t DETECT_DEBOUNCE = 3;
 const uint8_t COLOR_RETRIES = 3;
 
-// TCS3200: lower pulse width = brighter channel.
-const unsigned int COLOR_DARK_LIMIT = 400;  // above this = no useful object
-const unsigned int COLOR_MARGIN_PCT = 85;   // dominant channel must be 15% stronger
+// TCS3200 white-balance reference. These are measured at startup with the
+// pick area empty, so colour decisions do not depend on absolute brightness.
+unsigned int refR = 184;
+unsigned int refG = 299;
+unsigned int refB = 318;
 
 enum SystemState {
   STATE_IDLE,
@@ -162,7 +164,49 @@ unsigned int readColorChannel(bool s2, bool s3) {
   digitalWrite(TCS_S2, s2);
   digitalWrite(TCS_S3, s3);
   delay(8);
-  return pulseIn(TCS_OUT, LOW, 50000UL);
+
+  unsigned int samples[9];
+  for (uint8_t i = 0; i < 9; i++) {
+    unsigned long v = pulseIn(TCS_OUT, LOW, 50000UL);
+    if (v == 0) return 0;
+    samples[i] = (unsigned int)v;
+    delay(2);
+  }
+
+  // Median of 9 rejects specular glints and hand-motion spikes.
+  for (uint8_t i = 1; i < 9; i++) {
+    unsigned int key = samples[i];
+    int j = i - 1;
+    while (j >= 0 && samples[j] > key) {
+      samples[j + 1] = samples[j];
+      j--;
+    }
+    samples[j + 1] = key;
+  }
+  return samples[4];
+}
+
+void calibrateColorWhiteBalance() {
+  Serial.println(F("Colour calibration: keep the pick area EMPTY for 3 s..."));
+  delay(3000);
+
+  refR = readColorChannel(LOW,  LOW);
+  refG = readColorChannel(HIGH, HIGH);
+  refB = readColorChannel(LOW,  HIGH);
+
+  if (refR == 0 || refG == 0 || refB == 0) {
+    refR = 184;
+    refG = 299;
+    refB = 318;
+    Serial.println(F("Calibration timeout - using defaults."));
+  }
+
+  Serial.print(F("Colour reference -> R:"));
+  Serial.print(refR);
+  Serial.print(F(" G:"));
+  Serial.print(refG);
+  Serial.print(F(" B:"));
+  Serial.println(refB);
 }
 
 ObjectColor scanColor() {
@@ -183,31 +227,49 @@ ObjectColor scanColor() {
   Serial.print(F(" B:"));
   Serial.print(b);
   Serial.print(F(" C:"));
-  Serial.println(c);
+  Serial.print(c);
 
-  unsigned int minVal = min(r, min(g, b));
-  if (minVal == 0 || minVal > COLOR_DARK_LIMIT) {
-    return COLOR_UNKNOWN;  // timeout, black object, or too far away
+  if (r == 0 || g == 0 || b == 0) {
+    Serial.println(F(" -> sensor timeout"));
+    return COLOR_UNKNOWN;
   }
 
-  if (r == minVal &&
-      (unsigned long)r * 100UL < (unsigned long)g * COLOR_MARGIN_PCT &&
-      (unsigned long)r * 100UL < (unsigned long)b * COLOR_MARGIN_PCT) {
+  // Normalise each channel against the empty-background reference.
+  float nr = (float)refR / (float)r;
+  float ng = (float)refG / (float)g;
+  float nb = (float)refB / (float)b;
+
+  Serial.print(F(" | norm R:"));
+  Serial.print(nr, 2);
+  Serial.print(F(" G:"));
+  Serial.print(ng, 2);
+  Serial.print(F(" B:"));
+  Serial.print(nb, 2);
+
+  float maxv = max(nr, max(ng, nb));
+  float minv = min(nr, min(ng, nb));
+
+  if ((maxv - minv) < 0.04) {
+    Serial.println(F(" -> neutral"));
+    return COLOR_UNKNOWN;
+  }
+
+  if (nr >= ng && nr >= nb && nr > ng * 1.01 && nr > nb * 1.01) {
+    Serial.println(F(" -> RED"));
     return COLOR_RED;
   }
 
-  if (g == minVal &&
-      (unsigned long)g * 100UL < (unsigned long)r * COLOR_MARGIN_PCT &&
-      (unsigned long)g * 100UL < (unsigned long)b * COLOR_MARGIN_PCT) {
+  if (ng >= nr && ng >= nb && ng > nr * 1.01 && ng > nb * 1.01) {
+    Serial.println(F(" -> GREEN"));
     return COLOR_GREEN;
   }
 
-  if (b == minVal &&
-      (unsigned long)b * 100UL < (unsigned long)r * COLOR_MARGIN_PCT &&
-      (unsigned long)b * 100UL < (unsigned long)g * COLOR_MARGIN_PCT) {
+  if (nb >= nr && nb >= ng && nb > nr * 1.01 && nb > ng * 1.01) {
+    Serial.println(F(" -> BLUE"));
     return COLOR_BLUE;
   }
 
+  Serial.println(F(" -> mixed"));
   return COLOR_UNKNOWN;
 }
 
@@ -239,6 +301,8 @@ void setup() {
   setP(CH_WRIST, HOME_WRIST);       delay(300);
   setP(CH_BASE, HOME_BASE);         delay(600);
   pwm.setPWM(CH_GRIPPER, 0, GRIPPER_OPEN); delay(6000);
+
+  calibrateColorWhiteBalance();
 
   Serial.println(F("System Ready. Place an object 2-10 cm from the ultrasonic sensor."));
 }
