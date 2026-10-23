@@ -17,5 +17,6 @@
 | Ultrasonic triggers randomly | reflections, loose wire, soft target | require 3 consecutive readings (firmware does this); secure wiring; use a flat target |
 | Color sensor reads all colors as UNKNOWN | object too far, too dark, or OE not grounded | place object 1.5–3.0 cm away; ground OE; raise `DARK_LIMIT` |
 | Color sensor mixes red/green/blue | ambient light or wrong filter sequence | shade the sensor; verify S2/S3 truth table; lower `MARGIN_PCT` |
+| Only RED is detected; green/blue give UNKNOWN, and R≈C with G≈B | sensor S2 input is stuck / not connected, so filters never switch | check TCS3200 **S2 → Arduino D6** (not D5/D7/5V/GND); reseat or replace the S2 jumper; verify continuity |
 | Color sensor output stuck | S0/S1 not set | firmware sets S0=HIGH, S1=LOW (20% scaling) |
 | Sensors work alone but not together | pin conflict or shared 5V overload | verify D4–D10 are not used by anything else; power sensors from Arduino 5V, servos from buck |
