@@ -106,10 +106,40 @@ All sketches compile for `arduino:avr:uno`.
 
 | Sketch | Folder | Purpose | When to run |
 |---|---|---|---|
-| `pick_and_place.ino` | `code/pick_and_place/` | Stable elbow-reach pick-and-place | Motion-only demo |
-| `integrated_sorting.ino` | `code/integrated_sorting/` | Full demo: ultrasonic + color + pick/place | Main faculty demo |
+| `pick_and_place.ino` | `code/pick_and_place/` | Stable elbow-reach pick-and-place | **MAIN demo (the same run we checked last night)** |
+| `integrated_sorting.ino` | `code/integrated_sorting/` | Full demo: ultrasonic + color + pick/place | Only if sensor time is available |
 | `color_sensor_test.ino` | `code/color_sensor_test/` | TCS3200 white-balance color test | Sensor-only demo |
 | `ultrasonic_diagnostic.ino` | `code/ultrasonic_diagnostic/` | HC-SR04 distance test | Sensor-only demo |
+
+### The main run = `pick_and_place.ino` (last night's check)
+
+This is the sequence faculty will see, repeating every ~13 s:
+
+```text
+SAFE MODE - recovering to upright, 6s
+1. Reach down (elbow only)
+2. Grip
+3. Lift upright
+4. Rotate base to RED bin (upright)
+5. Reach down over bin
+6. Release
+7. Lift upright
+8. Rotate home
+Cycle done - pause 3s
+```
+
+Action per step:
+
+1. Shoulder stays vertical at `258`; elbow folds `300 → 278 → 248 → 218`.
+2. Gripper closes `120 → 200`.
+3. Elbow lifts first (`218 → 240 → 262 → 284 → 300`), shoulder returns to `260`.
+4. Base rotates `375 → 335` **only while upright**.
+5. Elbow reaches down again over the RED bin.
+6. Gripper opens `200 → 120` and drops the object.
+7. Arm lifts back upright.
+8. Base returns home `335 → 375`, then 3 s pause before the next cycle.
+
+After the 6-second startup recovery the sketch loops forever, so place the object before step 1.
 
 ### Compile
 
@@ -161,52 +191,64 @@ $cli = "C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino
 
 ## 7. Suggested faculty demo flow
 
-1. **Show hardware and safety**
+**Do exactly what we did last night: run `pick_and_place.ino`.** Everything else is optional backup.
+
+1. **Show hardware and safety (30 s)**
    - Point out common ground, external servo power, capacitor, clamped base.
    - Mention channel 3 fault and dead wrist-rotation servo.
 
-2. **Show wiring**
+2. **Show wiring (30 s)**
    - PCA9685 on `A4/A5`
    - HC-SR04 on `D9/D10`
    - TCS3200 on `D4–D8`
 
-3. **Run color sensor test**
-   - Upload `color_sensor_test.ino`
-   - Keep sensor empty for 3 seconds
-   - Show `UNKNOWN / NEUTRAL`
-   - Hold red, green, and blue objects 1.5–2 cm away
-   - Show each prints `RED`, `GREEN`, or `BLUE`
+3. **Run the pick-and-place (the main demo)**
+   - Select **Arduino Uno / COM8**, upload `code/pick_and_place/pick_and_place.ino`
+   - Clamp the base, support the arm
+   - Wait for the **6 s startup recovery**; put the object under the gripper
+   - Serial Monitor at **115200** shows steps `1` → `8`
+   - The arm reaches down, grips, lifts, rotates upright to the RED bin (335),
+     releases, lifts, and returns home
+   - It repeats automatically every cycle — run it 2–3 times
 
-4. **Run ultrasonic diagnostic**
-   - Upload `ultrasonic_diagnostic.ino`
-   - Move an object 2–10 cm away
-   - Show distance readings
+4. **Explain the safety logic while it moves**
+   - Shoulder stays vertical; only the light forearm reaches down
+   - Base rotates only after the arm folds upright
+   - Every pulse is clamped in firmware
+   - That is why the heavy arm does not collapse
 
-5. **Run motion-only demo**
-   - Upload `pick_and_place.ino`
-   - Show elbow-reach sequence
-   - Explain shoulder stays vertical and base rotates only while upright
+5. **Only if faculty ask about sensors**
+   - `color_sensor_test.ino`: empty area for 3 s → `UNKNOWN / NEUTRAL`,
+     then red/green/blue at 1.5–2 cm → `RED / GREEN / BLUE`
+   - `ultrasonic_diagnostic.ino`: object at 2–10 cm → distance printed
+   - `integrated_sorting.ino`: full auto-sort (needs empty area during its
+     3 s calibration)
 
-6. **Run full integrated demo**
-   - Upload `integrated_sorting.ino`
-   - Keep pick area empty during the 3-second color calibration
-   - Place a red/green/blue object 2–10 cm from ultrasonic sensor
-   - Show serial output:
-     - object detected
-     - color recognized
-     - pick sequence
-     - place into correct bin
-
-7. **Show final state**
-   - Arm returns home
-   - Gripper opens
-   - System ready for next object
+6. **Show final state**
+   - Arm returns home, gripper open, ready for the next cycle
 
 ---
 
 ## 8. Expected serial output
 
-Color test:
+### Main demo — `pick_and_place.ino` (115200)
+
+```text
+SAFE MODE - recovering to upright, 6s
+1. Reach down (elbow only)
+2. Grip
+3. Lift upright
+4. Rotate base to RED bin (upright)
+5. Reach down over bin
+6. Release
+7. Lift upright
+8. Rotate home
+Cycle done - pause 3s
+1. Reach down (elbow only)
+...
+```
+
+### Color test (optional)
 
 ```text
 Reference -> R:... G:... B:...
@@ -214,7 +256,7 @@ R: ... | G: ... | B: ... | norm R:1.00 G:1.00 B:1.00 => UNKNOWN / NEUTRAL
 R: ... | G: ... | B: ... | norm R:1.45 G:1.40 B:1.39 => RED
 ```
 
-Integrated sorting:
+### Integrated sorting (optional)
 
 ```text
 Colour reference -> R:... G:... B:...
